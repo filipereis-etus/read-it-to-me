@@ -25,6 +25,25 @@ const CATEGORIES = [
   { name: 'Opinion', keywords: ['opinion', 'opiniao', 'editorial', 'column', 'coluna', 'colunista', 'essay', 'ensaio', 'analysis', 'analise'] }
 ];
 
+// Muted accent colors per category. Kept a bit desaturated so they read as
+// soft indicators rather than UI chrome.
+const CATEGORY_COLORS = {
+  'Tech': '#6366f1',                      // indigo
+  'Business & Finance': '#10b981',        // emerald
+  'Politics': '#64748b',                  // slate
+  'Sports': '#f59e0b',                    // amber
+  'Science': '#06b6d4',                   // cyan
+  'Health': '#ec4899',                    // pink
+  'Culture & Entertainment': '#a855f7',   // purple
+  'World': '#3b82f6',                     // blue
+  'Opinion': '#eab308',                   // yellow
+  'Other': '#94a3b8'                      // neutral
+};
+
+function colorForCategory(name) {
+  return CATEGORY_COLORS[name] || CATEGORY_COLORS['Other'];
+}
+
 function categorize(article) {
   const raw = `${article.url || ''} ${article.title || ''} ${article.source || ''}`;
   const hay = ' ' + raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
@@ -279,6 +298,7 @@ function renderFlatList(ul) {
 function renderQueueItem(item) {
   const li = document.createElement('li');
   li.className = 'queue-item' + (item.id === state.currentId ? ' active' : '');
+  li.style.setProperty('--cat-color', colorForCategory(item.category || 'Other'));
 
   const main = document.createElement('div');
   main.className = 'qi-main';
@@ -319,12 +339,14 @@ function renderGroupedQueue(container) {
   container.innerHTML = '';
   const groups = groupQueueByCategory();
   for (const [cat, items] of groups) {
+    const color = colorForCategory(cat);
     const section = document.createElement('div');
     section.className = 'queue-group';
+    section.style.setProperty('--cat-color', color);
 
     const header = document.createElement('div');
     header.className = 'queue-group-header';
-    header.innerHTML = `<div class="queue-group-title">${escapeHtml(cat)}<span class="queue-group-count">· ${items.length}</span></div>`;
+    header.innerHTML = `<div class="queue-group-title"><span class="cat-dot"></span>${escapeHtml(cat)}<span class="queue-group-count">· ${items.length}</span></div>`;
     const playBtn = document.createElement('button');
     playBtn.className = 'qgroup-play-btn';
     playBtn.textContent = '▶ Play group';
