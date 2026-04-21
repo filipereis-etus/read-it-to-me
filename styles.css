@@ -355,6 +355,22 @@ hr {
   background: var(--surface-2);
 }
 
+.more-btn {
+  margin-top: 8px;
+  font-size: 13px;
+  min-height: 40px;
+  font-weight: 500;
+}
+
+.queue-more {
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 textarea {
   width: 100%;
   min-height: 120px;

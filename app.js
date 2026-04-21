@@ -108,8 +108,15 @@ const state = {
   wakeLock: null,
   // Auto-advance scope: null = single article; 'all' = entire queue;
   // { group: 'Tech' } = only items in that category.
-  playScope: null
+  playScope: null,
+  // Pagination: home list cap + per-group cap in the Queue view. Stored in
+  // memory only — resets on reload, which is fine.
+  homeVisible: 10,
+  groupVisible: new Map()
 };
+
+const GROUP_PAGE_SIZE = 20;
+const HOME_PAGE_SIZE = 10;
 
 // ------------------------------------------------------------
 // DOM helpers
@@ -124,6 +131,9 @@ function showView(name) {
   $('#view-settings').hidden = name !== 'settings';
   $('#view-queue').hidden = name !== 'queue';
   $('#view-import').hidden = name !== 'import';
+  // Lazy-render whatever list the user just switched to.
+  if (name === 'home') renderHomeListIfStale();
+  if (name === 'queue') renderGroupedListIfStale();
   window.scrollTo(0, 0);
 }
 
@@ -281,18 +291,58 @@ function findArticle(id) {
 // ------------------------------------------------------------
 // Rendering
 // ------------------------------------------------------------
+// Only re-render the list the user can currently see. Other views are marked
+// stale and rebuilt on view switch. With large queues this is a big win — we
+// were previously rebuilding 200+ DOM nodes twice on every state change.
+let homeListStale = true;
+let groupListStale = true;
+
 function renderQueues() {
-  renderFlatList($('#home-queue'));
-  renderGroupedQueue($('#grouped-queue'));
   $('#empty-queue').hidden = state.queue.length > 0;
   $('#queue-empty').hidden = state.queue.length > 0;
   $('#queue-actions').style.display = state.queue.length ? '' : 'none';
   updateQueueBadge();
+
+  homeListStale = true;
+  groupListStale = true;
+  if (state.view === 'home') renderHomeListIfStale();
+  if (state.view === 'queue') renderGroupedListIfStale();
+}
+
+function renderHomeListIfStale() {
+  if (!homeListStale) return;
+  renderFlatList($('#home-queue'));
+  homeListStale = false;
+}
+
+function renderGroupedListIfStale() {
+  if (!groupListStale) return;
+  renderGroupedQueue($('#grouped-queue'));
+  groupListStale = false;
 }
 
 function renderFlatList(ul) {
   ul.innerHTML = '';
-  for (const item of state.queue) ul.appendChild(renderQueueItem(item));
+  const total = state.queue.length;
+  const limit = Math.min(state.homeVisible, total);
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < limit; i++) frag.appendChild(renderQueueItem(state.queue[i]));
+  ul.appendChild(frag);
+
+  if (total > limit) {
+    const li = document.createElement('li');
+    li.className = 'queue-more';
+    li.innerHTML = `
+      <button class="btn ghost full" data-action="home-more">Show more (${total - limit} hidden)</button>
+      <button class="btn ghost full" data-action="open-queue">See full queue · ${total} articles</button>
+    `;
+    li.querySelector('[data-action="home-more"]').addEventListener('click', () => {
+      state.homeVisible += HOME_PAGE_SIZE;
+      renderQueues();
+    });
+    li.querySelector('[data-action="open-queue"]').addEventListener('click', () => showView('queue'));
+    ul.appendChild(li);
+  }
 }
 
 function renderQueueItem(item) {
@@ -338,6 +388,8 @@ function groupQueueByCategory() {
 function renderGroupedQueue(container) {
   container.innerHTML = '';
   const groups = groupQueueByCategory();
+  const outerFrag = document.createDocumentFragment();
+
   for (const [cat, items] of groups) {
     const color = colorForCategory(cat);
     const section = document.createElement('div');
@@ -356,11 +408,36 @@ function renderGroupedQueue(container) {
 
     const ul = document.createElement('ul');
     ul.className = 'queue-list';
-    for (const item of items) ul.appendChild(renderQueueItem(item));
+    const visible = Math.min(state.groupVisible.get(cat) || GROUP_PAGE_SIZE, items.length);
+    const innerFrag = document.createDocumentFragment();
+    for (let i = 0; i < visible; i++) innerFrag.appendChild(renderQueueItem(items[i]));
+    ul.appendChild(innerFrag);
     section.appendChild(ul);
 
-    container.appendChild(section);
+    if (items.length > visible) {
+      const moreBtn = document.createElement('button');
+      moreBtn.className = 'btn ghost full more-btn';
+      moreBtn.textContent = `Show more (${items.length - visible} hidden)`;
+      moreBtn.addEventListener('click', () => {
+        state.groupVisible.set(cat, visible + GROUP_PAGE_SIZE);
+        renderQueues();
+      });
+      section.appendChild(moreBtn);
+    } else if (visible > GROUP_PAGE_SIZE) {
+      const lessBtn = document.createElement('button');
+      lessBtn.className = 'btn ghost full more-btn';
+      lessBtn.textContent = 'Collapse';
+      lessBtn.addEventListener('click', () => {
+        state.groupVisible.delete(cat);
+        renderQueues();
+      });
+      section.appendChild(lessBtn);
+    }
+
+    outerFrag.appendChild(section);
   }
+
+  container.appendChild(outerFrag);
 }
 
 function statusLabel(item) {
@@ -1060,23 +1137,6 @@ function wire() {
     saveQueue();
     renderQueues();
     toast('Queue cleared');
-  });
-
-  $('#btn-reset-all').addEventListener('click', async () => {
-    if (!confirm('Reset the app?\n\nThis wipes the queue, saved positions, settings, cached code, and the service worker. You will reload fresh.')) return;
-    stopPlayback();
-    try {
-      for (const k of Object.values(STORAGE_KEYS)) localStorage.removeItem(k);
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
-      }
-    } catch (e) { console.warn('reset partial:', e); }
-    location.reload();
   });
 
   $('#btn-queue').addEventListener('click', () => { renderQueues(); showView('queue'); });
