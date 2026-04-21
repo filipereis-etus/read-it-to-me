@@ -269,10 +269,131 @@ hr {
   display: flex;
   gap: 8px;
   margin: 18px 0 12px;
+  align-items: center;
 }
 
 .url-row input {
   flex: 1;
+  min-width: 0;
+}
+
+.paste-btn {
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.paste-btn:active {
+  background: var(--border);
+}
+
+.btn.full {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.queue-actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.queue-actions .btn {
+  flex: 1;
+}
+
+.queue-group {
+  margin-top: 16px;
+}
+
+.queue-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px;
+  margin-bottom: 8px;
+}
+
+.queue-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.queue-group-count {
+  font-weight: 400;
+  opacity: 0.7;
+  margin-left: 6px;
+}
+
+.qgroup-play-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qgroup-play-btn:active {
+  background: var(--surface-2);
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  outline: none;
+  resize: vertical;
+}
+
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+input[type="file"] {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.import-preview {
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.import-preview strong { color: var(--primary); }
+
+.import-preview .tag-row {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.import-preview .tag {
+  display: inline-block;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .empty {

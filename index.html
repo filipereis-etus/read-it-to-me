@@ -62,8 +62,12 @@
           </div>
           <div class="url-row">
             <input type="url" id="url-input" placeholder="https://example.com/article" inputmode="url" autocomplete="off" />
+            <button class="icon-btn paste-btn" id="btn-paste" aria-label="Paste from clipboard">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 2h-4.18C14.4.84 13.3 0 12 0s-2.4.84-2.82 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1-1 1 1 1 0 0 1 1-1zm7 18H5V4h2v3h10V4h2z"/></svg>
+            </button>
             <button class="btn primary" id="btn-add-url">Add</button>
           </div>
+          <button class="btn ghost full" id="btn-open-import">Import URL list…</button>
           <div id="empty-queue" class="empty">
             <p class="muted">No articles yet. Shared articles will appear in the queue.</p>
           </div>
@@ -131,9 +135,39 @@
         <div class="container">
           <button class="btn ghost back-btn" id="btn-queue-back">← Back</button>
           <h2>Queue</h2>
-          <ul id="queue-list" class="queue-list"></ul>
+          <div class="queue-actions" id="queue-actions">
+            <button class="btn primary" id="btn-play-all">▶ Play all</button>
+            <button class="btn ghost" id="btn-open-import-queue">Import…</button>
+          </div>
+          <div id="grouped-queue"></div>
           <div id="queue-empty" class="empty" hidden>
             <p class="muted">Your queue is empty.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- IMPORT VIEW -->
+      <section class="view" id="view-import" hidden>
+        <div class="container">
+          <button class="btn ghost back-btn" id="btn-import-back">← Back</button>
+          <h2>Import URL list</h2>
+          <p class="muted">Paste any text — we'll pull every URL out of it. You can also upload a bookmarks export from Chrome (the HTML file) or a plain .txt file.</p>
+
+          <label class="field">
+            <span>Paste text or URLs</span>
+            <textarea id="import-text" rows="6" placeholder="One URL per line, or paste a blob — we'll find the URLs." spellcheck="false"></textarea>
+          </label>
+
+          <label class="field">
+            <span>Or upload a file (.html, .txt)</span>
+            <input type="file" id="import-file" accept=".html,.htm,.txt,.csv,.json" />
+          </label>
+
+          <div id="import-preview" class="import-preview" hidden></div>
+
+          <div class="button-row">
+            <button class="btn primary" id="btn-import-commit" disabled>Add to queue</button>
+            <button class="btn ghost" id="btn-import-clear">Clear</button>
           </div>
         </div>
       </section>

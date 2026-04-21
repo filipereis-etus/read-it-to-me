@@ -10,6 +10,36 @@ const STORAGE_KEYS = {
 
 // CORS proxies — tried in order. If one fails or returns an empty page we
 // move to the next. All are free and anonymous.
+// Keyword-based category classifier. No AI, but covers the common beats in
+// both English and Portuguese. The hay is URL path + title + source, normalised
+// by stripping non-alphanumerics so "tech-news" and "tech news" both match.
+const CATEGORIES = [
+  { name: 'Tech', keywords: ['tech', 'technology', 'tecnologia', 'software', 'startup', 'programming', 'programacao', 'coding', 'developer', 'desenvolvedor', 'ai', 'artificial', 'inteligencia', 'ia', 'machine', 'learning', 'ml', 'android', 'iphone', 'gadget', 'apple', 'google', 'chromium', 'chrome', 'microsoft', 'github', 'open source', 'app', 'internet'] },
+  { name: 'Business & Finance', keywords: ['business', 'negocios', 'market', 'mercado', 'stock', 'stocks', 'acoes', 'economy', 'economia', 'invest', 'investor', 'investir', 'finance', 'financas', 'financeiro', 'ceo', 'company', 'empresa', 'deal', 'ipo', 'banking', 'banco', 'bank', 'fundos', 'startup funding'] },
+  { name: 'Politics', keywords: ['politics', 'political', 'politica', 'election', 'eleicao', 'eleicoes', 'government', 'governo', 'congress', 'congresso', 'senate', 'senado', 'vote', 'voto', 'president', 'presidente', 'parliament', 'camara', 'deputado', 'supreme court', 'stf'] },
+  { name: 'Sports', keywords: ['sport', 'sports', 'esporte', 'esportes', 'football', 'futebol', 'soccer', 'basketball', 'basquete', 'nba', 'nfl', 'fifa', 'olympic', 'olimpiada', 'tennis', 'racing', 'baseball', 'hockey', 'ufc', 'mma'] },
+  { name: 'Science', keywords: ['science', 'ciencia', 'research', 'pesquisa', 'study', 'estudo', 'discovery', 'descoberta', 'astronomy', 'astronomia', 'biology', 'biologia', 'physics', 'fisica', 'chemistry', 'quimica', 'nasa', 'space', 'espaco'] },
+  { name: 'Health', keywords: ['health', 'saude', 'medic', 'medicine', 'medicina', 'disease', 'doenca', 'doctor', 'medico', 'hospital', 'covid', 'vaccine', 'vacina', 'fitness', 'nutrition', 'nutricao', 'wellness', 'mental'] },
+  { name: 'Culture & Entertainment', keywords: ['culture', 'cultura', 'entertainment', 'entretenimento', 'movie', 'movies', 'filme', 'filmes', 'film', 'music', 'musica', 'book', 'books', 'livro', 'album', 'celebrity', 'celebridade', 'tv', 'show', 'serie', 'series', 'netflix', 'art', 'arte', 'theater', 'teatro', 'games', 'gaming'] },
+  { name: 'World', keywords: ['world', 'mundo', 'international', 'internacional', 'global', 'foreign', 'ukraine', 'ucrania', 'russia', 'russia', 'china', 'europe', 'europa', 'asia', 'africa', 'americas', 'middle east', 'oriente medio'] },
+  { name: 'Opinion', keywords: ['opinion', 'opiniao', 'editorial', 'column', 'coluna', 'colunista', 'essay', 'ensaio', 'analysis', 'analise'] }
+];
+
+function categorize(article) {
+  const raw = `${article.url || ''} ${article.title || ''} ${article.source || ''}`;
+  const hay = ' ' + raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
+  let best = { name: 'Other', score: 0 };
+  for (const cat of CATEGORIES) {
+    let score = 0;
+    for (const k of cat.keywords) {
+      const needle = k.replace(/[^a-z0-9]+/g, ' ');
+      if (hay.includes(' ' + needle + ' ')) score += 1;
+    }
+    if (score > best.score) best = { name: cat.name, score };
+  }
+  return best.name;
+}
+
 const CORS_PROXIES = [
   (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -31,7 +61,10 @@ const state = {
   paused: false,
   finished: false,
   currentUtterance: null,
-  wakeLock: null
+  wakeLock: null,
+  // Auto-advance scope: null = single article; 'all' = entire queue;
+  // { group: 'Tech' } = only items in that category.
+  playScope: null
 };
 
 // ------------------------------------------------------------
@@ -46,6 +79,7 @@ function showView(name) {
   $('#view-player').hidden = name !== 'player';
   $('#view-settings').hidden = name !== 'settings';
   $('#view-queue').hidden = name !== 'queue';
+  $('#view-import').hidden = name !== 'import';
   window.scrollTo(0, 0);
 }
 
@@ -96,7 +130,10 @@ function loadQueue() {
     const raw = localStorage.getItem(STORAGE_KEYS.queue);
     if (!raw) return;
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) state.queue = parsed;
+    if (!Array.isArray(parsed)) return;
+    state.queue = parsed;
+    // Backfill categories for items saved before the classifier existed.
+    for (const a of state.queue) if (!a.category) a.category = categorize(a);
   } catch (e) {}
 }
 
@@ -139,12 +176,46 @@ function addArticle(url) {
     readingMinutes: null,
     status: 'pending',
     resumeIndex: 0,
-    totalChunks: 0
+    totalChunks: 0,
+    category: null
   };
+  article.category = categorize(article);
   state.queue.push(article);
   saveQueue();
   renderQueues();
   return article;
+}
+
+// Bulk-add many URLs at once (used by the import flow). Dedupes against the
+// existing queue by URL and skips malformed entries silently.
+function addArticlesBulk(urls) {
+  const added = [];
+  for (let url of urls) {
+    if (!url) continue;
+    url = url.trim();
+    if (!url) continue;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    try { new URL(url); } catch { continue; }
+    if (state.queue.find((a) => a.url === url)) continue;
+    const a = {
+      id: uid(),
+      url,
+      title: url,
+      source: hostnameOf(url),
+      language: null,
+      article: null,
+      readingMinutes: null,
+      status: 'pending',
+      resumeIndex: 0,
+      totalChunks: 0,
+      category: null
+    };
+    a.category = categorize(a);
+    state.queue.push(a);
+    added.push(a);
+  }
+  if (added.length) { saveQueue(); renderQueues(); }
+  return added;
 }
 
 function removeArticle(id) {
@@ -167,37 +238,81 @@ function findArticle(id) {
 // Rendering
 // ------------------------------------------------------------
 function renderQueues() {
-  renderQueueList($('#home-queue'), true);
-  renderQueueList($('#queue-list'), false);
+  renderFlatList($('#home-queue'));
+  renderGroupedQueue($('#grouped-queue'));
   $('#empty-queue').hidden = state.queue.length > 0;
   $('#queue-empty').hidden = state.queue.length > 0;
+  $('#queue-actions').style.display = state.queue.length ? '' : 'none';
   updateQueueBadge();
 }
 
-function renderQueueList(ul, compact) {
+function renderFlatList(ul) {
   ul.innerHTML = '';
-  for (const item of state.queue) {
-    const li = document.createElement('li');
-    li.className = 'queue-item' + (item.id === state.currentId ? ' active' : '');
+  for (const item of state.queue) ul.appendChild(renderQueueItem(item));
+}
 
-    const main = document.createElement('div');
-    main.className = 'qi-main';
-    main.innerHTML = `
-      <div class="qi-source">${escapeHtml(item.source || '')}</div>
-      <div class="qi-title">${escapeHtml(item.title || item.url)}</div>
-      <div class="qi-meta">${item.readingMinutes ? item.readingMinutes + ' min read · ' : ''}${escapeHtml(statusLabel(item))}</div>
-    `;
-    main.addEventListener('click', () => openArticle(item.id));
+function renderQueueItem(item) {
+  const li = document.createElement('li');
+  li.className = 'queue-item' + (item.id === state.currentId ? ' active' : '');
 
-    const rm = document.createElement('button');
-    rm.className = 'qi-remove';
-    rm.setAttribute('aria-label', 'Remove');
-    rm.textContent = '✕';
-    rm.addEventListener('click', (e) => { e.stopPropagation(); removeArticle(item.id); });
+  const main = document.createElement('div');
+  main.className = 'qi-main';
+  main.innerHTML = `
+    <div class="qi-source">${escapeHtml(item.source || '')}${item.category ? ' · ' + escapeHtml(item.category) : ''}</div>
+    <div class="qi-title">${escapeHtml(item.title || item.url)}</div>
+    <div class="qi-meta">${item.readingMinutes ? item.readingMinutes + ' min read · ' : ''}${escapeHtml(statusLabel(item))}</div>
+  `;
+  main.addEventListener('click', () => openArticle(item.id));
 
-    li.appendChild(main);
-    li.appendChild(rm);
-    ul.appendChild(li);
+  const rm = document.createElement('button');
+  rm.className = 'qi-remove';
+  rm.setAttribute('aria-label', 'Remove');
+  rm.textContent = '✕';
+  rm.addEventListener('click', (e) => { e.stopPropagation(); removeArticle(item.id); });
+
+  li.appendChild(main);
+  li.appendChild(rm);
+  return li;
+}
+
+function groupQueueByCategory() {
+  const groups = new Map();
+  for (const a of state.queue) {
+    const cat = a.category || 'Other';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push(a);
+  }
+  // Stable ordering: follow CATEGORIES order, then "Other" last, then any unknowns.
+  const order = [...CATEGORIES.map((c) => c.name), 'Other'];
+  const sorted = new Map();
+  for (const name of order) if (groups.has(name)) sorted.set(name, groups.get(name));
+  for (const [name, items] of groups) if (!sorted.has(name)) sorted.set(name, items);
+  return sorted;
+}
+
+function renderGroupedQueue(container) {
+  container.innerHTML = '';
+  const groups = groupQueueByCategory();
+  for (const [cat, items] of groups) {
+    const section = document.createElement('div');
+    section.className = 'queue-group';
+
+    const header = document.createElement('div');
+    header.className = 'queue-group-header';
+    header.innerHTML = `<div class="queue-group-title">${escapeHtml(cat)}<span class="queue-group-count">· ${items.length}</span></div>`;
+    const playBtn = document.createElement('button');
+    playBtn.className = 'qgroup-play-btn';
+    playBtn.textContent = '▶ Play group';
+    playBtn.addEventListener('click', () => playGroup(cat));
+    header.appendChild(playBtn);
+    section.appendChild(header);
+
+    const ul = document.createElement('ul');
+    ul.className = 'queue-list';
+    for (const item of items) ul.appendChild(renderQueueItem(item));
+    section.appendChild(ul);
+
+    container.appendChild(section);
   }
 }
 
@@ -217,17 +332,21 @@ function escapeHtml(s) {
 // ------------------------------------------------------------
 // Open article → fetch & process if needed → switch to player
 // ------------------------------------------------------------
-async function openArticle(id) {
+async function openArticle(id, opts = {}) {
   const article = findArticle(id);
   if (!article) return;
   stopPlayback();
+  if (!opts.autoPlay) state.playScope = null;
   state.currentId = id;
   localStorage.setItem(STORAGE_KEYS.lastId, id);
   showView('player');
   renderPlayer(article);
 
   if (!article.article) {
+    // processArticle auto-plays on success; scope carries through to onPhaseEnd
     await processArticle(article);
+  } else if (opts.autoPlay) {
+    playArticle(article, { fromStart: true });
   } else if (article.resumeIndex > 0 && article.totalChunks > 0) {
     setStatus('paused', 'Paused — tap play to resume');
     setProgress((article.resumeIndex / article.totalChunks) * 100);
@@ -235,6 +354,34 @@ async function openArticle(id) {
     setStatus('idle', 'Ready');
     setProgress(0);
   }
+}
+
+function articlesInScope() {
+  const s = state.playScope;
+  if (!s) return null;
+  if (s === 'all') return state.queue.slice();
+  if (s.group) return state.queue.filter((a) => (a.category || 'Other') === s.group);
+  return null;
+}
+
+function nextInScope(currentId) {
+  const list = articlesInScope();
+  if (!list) return null;
+  const idx = list.findIndex((a) => a.id === currentId);
+  return idx === -1 ? null : (list[idx + 1] || null);
+}
+
+function playAll() {
+  if (!state.queue.length) return;
+  state.playScope = 'all';
+  openArticle(state.queue[0].id, { autoPlay: true });
+}
+
+function playGroup(category) {
+  const items = state.queue.filter((a) => (a.category || 'Other') === category);
+  if (!items.length) return;
+  state.playScope = { group: category };
+  openArticle(items[0].id, { autoPlay: true });
 }
 
 function renderPlayer(article) {
@@ -297,6 +444,8 @@ async function processArticle(article) {
   article.totalChunks = splitIntoChunks(article.article).length;
   article.resumeIndex = 0;
   article.status = 'ready';
+  // Re-categorize now that we have a real title — more signal than URL alone.
+  article.category = categorize(article);
 
   saveQueue();
   renderQueues();
@@ -619,6 +768,16 @@ function onPhaseEnd(article) {
     saveQueue();
   }
   releaseWakeLock();
+
+  // Auto-advance when bulk playback is active (Play all / Play group).
+  if (article && state.playScope) {
+    const next = nextInScope(article.id);
+    if (next) {
+      setTimeout(() => openArticle(next.id, { autoPlay: true }), 600);
+    } else {
+      state.playScope = null;
+    }
+  }
 }
 
 function togglePlayPause() {
@@ -692,6 +851,93 @@ function playNext() {
 }
 
 // ------------------------------------------------------------
+// Clipboard
+// ------------------------------------------------------------
+async function tryPasteFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) return null;
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text) return null;
+    const m = text.trim().match(/https?:\/\/\S+/);
+    return m ? m[0].replace(/[)\].,;!?"'>]+$/, '') : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ------------------------------------------------------------
+// URL extraction (for the Import view)
+// ------------------------------------------------------------
+function extractUrls(text) {
+  if (!text) return [];
+  const seen = new Set();
+  const out = [];
+  const re = /https?:\/\/[^\s<>"']+/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const clean = m[0].replace(/[)\].,;!?"'>]+$/, '');
+    try { new URL(clean); } catch { continue; }
+    if (!seen.has(clean)) { seen.add(clean); out.push(clean); }
+  }
+  return out;
+}
+
+let importState = { urls: [] };
+
+function updateImportPreview() {
+  const box = $('#import-preview');
+  const btn = $('#btn-import-commit');
+  const urls = importState.urls;
+  if (!urls.length) { box.hidden = true; btn.disabled = true; return; }
+
+  // Count duplicates against existing queue
+  const existing = new Set(state.queue.map((a) => a.url));
+  const fresh = urls.filter((u) => !existing.has(u));
+  const dupes = urls.length - fresh.length;
+
+  // Preview categorization
+  const cats = new Map();
+  for (const u of fresh) {
+    const c = categorize({ url: u, title: '', source: hostnameOf(u) });
+    cats.set(c, (cats.get(c) || 0) + 1);
+  }
+  const tags = [...cats.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([c, n]) => `<span class="tag">${escapeHtml(c)} · ${n}</span>`)
+    .join('');
+
+  box.hidden = false;
+  box.innerHTML = `
+    <div>Found <strong>${urls.length}</strong> URL${urls.length === 1 ? '' : 's'}${dupes ? ` <span class="muted">(${dupes} already in queue)</span>` : ''}.</div>
+    ${tags ? `<div class="tag-row">${tags}</div>` : ''}
+  `;
+  btn.disabled = fresh.length === 0;
+}
+
+function refreshImportFromTextarea() {
+  importState.urls = extractUrls($('#import-text').value);
+  updateImportPreview();
+}
+
+async function handleImportFile(file) {
+  if (!file) return;
+  const text = await file.text();
+  const current = $('#import-text').value;
+  $('#import-text').value = current ? (current + '\n' + text) : text;
+  refreshImportFromTextarea();
+}
+
+function commitImport() {
+  const added = addArticlesBulk(importState.urls);
+  if (!added.length) { toast('Nothing new to import'); return; }
+  toast(`Added ${added.length} article${added.length === 1 ? '' : 's'}`);
+  $('#import-text').value = '';
+  importState.urls = [];
+  updateImportPreview();
+  showView('queue');
+}
+
+// ------------------------------------------------------------
 // Event wiring
 // ------------------------------------------------------------
 function wire() {
@@ -717,12 +963,42 @@ function wire() {
     const a = addArticle(url);
     if (a) {
       $('#url-input').value = '';
+      state.playScope = null; // single-article intent
       openArticle(a.id);
     }
   });
   $('#url-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#btn-add-url').click();
   });
+
+  // Clipboard: explicit paste button + silent attempt when the input gains focus
+  $('#btn-paste').addEventListener('click', async () => {
+    const url = await tryPasteFromClipboard();
+    if (url) { $('#url-input').value = url; $('#url-input').focus(); }
+    else toast('Clipboard is empty or has no URL');
+  });
+  $('#url-input').addEventListener('focus', async () => {
+    if ($('#url-input').value) return;
+    const url = await tryPasteFromClipboard();
+    if (url) $('#url-input').value = url;
+  });
+
+  // Import view
+  $('#btn-open-import').addEventListener('click', () => showView('import'));
+  $('#btn-open-import-queue').addEventListener('click', () => showView('import'));
+  $('#btn-import-back').addEventListener('click', () => showView(state.queue.length ? 'queue' : 'home'));
+  $('#import-text').addEventListener('input', refreshImportFromTextarea);
+  $('#import-file').addEventListener('change', (e) => handleImportFile(e.target.files[0]));
+  $('#btn-import-commit').addEventListener('click', commitImport);
+  $('#btn-import-clear').addEventListener('click', () => {
+    $('#import-text').value = '';
+    $('#import-file').value = '';
+    importState.urls = [];
+    updateImportPreview();
+  });
+
+  // Bulk playback
+  $('#btn-play-all').addEventListener('click', playAll);
 
   $('#btn-playpause').addEventListener('click', togglePlayPause);
   $('#btn-stop').addEventListener('click', stopPlayback);
