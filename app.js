@@ -1062,6 +1062,23 @@ function wire() {
     toast('Queue cleared');
   });
 
+  $('#btn-reset-all').addEventListener('click', async () => {
+    if (!confirm('Reset the app?\n\nThis wipes the queue, saved positions, settings, cached code, and the service worker. You will reload fresh.')) return;
+    stopPlayback();
+    try {
+      for (const k of Object.values(STORAGE_KEYS)) localStorage.removeItem(k);
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch (e) { console.warn('reset partial:', e); }
+    location.reload();
+  });
+
   $('#btn-queue').addEventListener('click', () => { renderQueues(); showView('queue'); });
   $('#btn-queue-back').addEventListener('click', () => showView(state.currentId ? 'player' : 'home'));
   $('#btn-back').addEventListener('click', () => showView('home'));

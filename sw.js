@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v6';
+const CACHE_VERSION = 'ritm-v7';
 const CORE_ASSETS = [
   './',
   './index.html',
