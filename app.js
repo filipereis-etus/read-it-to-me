@@ -4,7 +4,8 @@
 
 const STORAGE_KEYS = {
   speed: 'ritm.speed',
-  queue: 'ritm.queue'
+  queue: 'ritm.queue',
+  lastId: 'ritm.lastId'
 };
 
 // CORS proxies — tried in order. If one fails or returns an empty page we
@@ -29,7 +30,8 @@ const state = {
   playing: false,
   paused: false,
   finished: false,
-  currentUtterance: null
+  currentUtterance: null,
+  wakeLock: null
 };
 
 // ------------------------------------------------------------
@@ -135,7 +137,9 @@ function addArticle(url) {
     language: null,
     article: null,
     readingMinutes: null,
-    status: 'pending'
+    status: 'pending',
+    resumeIndex: 0,
+    totalChunks: 0
   };
   state.queue.push(article);
   saveQueue();
@@ -218,11 +222,15 @@ async function openArticle(id) {
   if (!article) return;
   stopPlayback();
   state.currentId = id;
+  localStorage.setItem(STORAGE_KEYS.lastId, id);
   showView('player');
   renderPlayer(article);
 
   if (!article.article) {
     await processArticle(article);
+  } else if (article.resumeIndex > 0 && article.totalChunks > 0) {
+    setStatus('paused', 'Paused — tap play to resume');
+    setProgress((article.resumeIndex / article.totalChunks) * 100);
   } else {
     setStatus('idle', 'Ready');
     setProgress(0);
@@ -284,8 +292,10 @@ async function processArticle(article) {
   article.title = extracted.title || article.title;
   article.source = extracted.source || hostnameOf(article.url);
   article.language = (extracted.language || 'en').toLowerCase().slice(0, 5);
-  article.article = extracted.article;
+  article.article = trimExtras(extracted.article);
   article.readingMinutes = Math.max(1, Math.round((article.article.split(/\s+/).length || 1) / 220));
+  article.totalChunks = splitIntoChunks(article.article).length;
+  article.resumeIndex = 0;
   article.status = 'ready';
 
   saveQueue();
@@ -295,6 +305,36 @@ async function processArticle(article) {
   setProgress(0);
 
   playArticle(article);
+}
+
+// Strip boilerplate that Readability tends to keep: author bios at the tail,
+// image captions, share/subscribe prompts, "read also" links, photo credits.
+function trimExtras(text) {
+  if (!text) return '';
+  const lines = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+
+  const junkLine = /^(advertisement|sponsored|subscribe|sign up|follow us|share this|share on|click here|read more|read also|read next|related articles?|continue reading|you may also like|more from|trending|most read|newsletter|join our|support (our|us)|(photo|image|picture|illustration) (by|credit|caption)|getty images|reuters|associated press|copyright ©)/i;
+  const captionLine = /^(photo|image|picture|illustration|figure|file photo|stock photo)[:.]/i;
+  const creditLine = /^(credit|source|via)[:.]\s/i;
+  const authorBio = /^(about the author|the author is|.{0,60} is (a|an|the) (journalist|reporter|writer|editor|correspondent|columnist|contributor|analyst))/i;
+
+  let cutIndex = lines.length;
+  for (let i = Math.max(0, lines.length - 6); i < lines.length; i++) {
+    if (authorBio.test(lines[i])) { cutIndex = i; break; }
+  }
+
+  return lines
+    .slice(0, cutIndex)
+    .filter((p) => {
+      if (junkLine.test(p)) return false;
+      if (captionLine.test(p)) return false;
+      if (creditLine.test(p)) return false;
+      // Short paragraphs without sentence punctuation are usually captions or UI chrome
+      if (p.length < 60 && !/[.!?…]$/.test(p) && !/[.!?…]\s/.test(p)) return false;
+      return true;
+    })
+    .join('\n\n')
+    .trim();
 }
 
 async function fetchViaProxies(url) {
@@ -384,25 +424,54 @@ function detectLangHeuristic(text) {
 // ------------------------------------------------------------
 // Playback (Web Speech API)
 // ------------------------------------------------------------
+// Chunk by paragraph so we stay on natural prose boundaries; split a long
+// paragraph at sentence boundaries only when it exceeds MAX. Larger chunks =
+// fewer utterance restarts = smoother, less-stuttered reading.
 function splitIntoChunks(text) {
   if (!text) return [];
-  // Split on sentence boundaries; keep chunks under ~220 chars for mobile stability.
-  const parts = text
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?…])\s+|(?<=[。！？])/g)
+  const MAX = 500;
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
+
   const chunks = [];
-  let buf = '';
-  for (const s of parts) {
-    if ((buf + ' ' + s).trim().length > 220) {
-      if (buf) chunks.push(buf.trim());
-      buf = s;
-    } else {
-      buf = buf ? buf + ' ' + s : s;
+  for (const p of paragraphs) {
+    if (p.length <= MAX) { chunks.push(p); continue; }
+    const sentences = p.split(/(?<=[.!?…])\s+(?=[A-ZÀ-Ý0-9"'“‘])|(?<=[。！？])/g).filter(Boolean);
+    let buf = '';
+    for (const s of sentences) {
+      if ((buf + ' ' + s).trim().length > MAX && buf) {
+        chunks.push(buf.trim());
+        buf = s;
+      } else {
+        buf = buf ? buf + ' ' + s : s;
+      }
     }
+    if (buf) chunks.push(buf.trim());
   }
-  if (buf) chunks.push(buf.trim());
   return chunks;
+}
+
+// Pre-process text before handing to the TTS engine. Targets the engine's
+// biggest pain points: unpunctuated dashes, straight-quoted typography,
+// abbreviations that get spelled letter-by-letter.
+function prepareForSpeech(text) {
+  return text
+    .replace(/[—–]\s*/g, ', ')
+    .replace(/…/g, '. ')
+    .replace(/[“”«»]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/\bU\.S\.A?\.?\b/g, 'USA')
+    .replace(/\bU\.K\.\b/g, 'UK')
+    .replace(/\bE\.U\.\b/g, 'EU')
+    .replace(/\bU\.N\.\b/g, 'UN')
+    .replace(/\be\.g\./gi, 'for example')
+    .replace(/\bi\.e\./gi, 'that is')
+    .replace(/\betc\./gi, 'etcetera')
+    .replace(/\bvs\./gi, 'versus')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 let voices = [];
@@ -414,20 +483,63 @@ if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = refreshVoices;
 }
 
+// Prefer higher-quality voices when the device has them installed. On Android
+// that usually means a Google "natural" or "neural" voice — far less robotic
+// than the default. Falls back to any matching-language voice.
 function pickVoice(lang) {
   if (!voices.length) refreshVoices();
   if (!voices.length || !lang) return null;
-  const l = lang.toLowerCase();
-  return voices.find((v) => v.lang.toLowerCase().startsWith(l)) ||
-         voices.find((v) => v.lang.toLowerCase().slice(0, 2) === l.slice(0, 2)) ||
-         null;
+  const base = lang.toLowerCase().slice(0, 2);
+  const matches = voices.filter((v) => v.lang.toLowerCase().slice(0, 2) === base);
+  if (!matches.length) return null;
+
+  const score = (v) => {
+    let s = 0;
+    const name = (v.name || '').toLowerCase();
+    if (/neural|natural|wavenet|premium|enhanced|studio/.test(name)) s += 10;
+    if (/google/.test(name)) s += 3;
+    if (v.localService === false) s += 1;
+    if (v.lang.toLowerCase() === lang.toLowerCase()) s += 2;
+    if (v.default) s += 1;
+    return s;
+  };
+  return matches.slice().sort((a, b) => score(b) - score(a))[0];
 }
 
-function playArticle(article) {
+function playArticle(article, opts = {}) {
   if (!article || !article.article) return;
   state.chunks = splitIntoChunks(article.article);
-  state.chunkIndex = 0;
+  article.totalChunks = state.chunks.length;
+  const fromStart = opts.fromStart === true;
+  state.chunkIndex = fromStart ? 0 : Math.min(article.resumeIndex || 0, Math.max(0, state.chunks.length - 1));
   startSpeaking(article);
+}
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try { state.wakeLock = await navigator.wakeLock.request('screen'); }
+  catch (e) { /* denied or throttled — not fatal */ }
+}
+
+function releaseWakeLock() {
+  if (state.wakeLock) {
+    state.wakeLock.release().catch(() => {});
+    state.wakeLock = null;
+  }
+}
+
+function setMediaSession(article) {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: article.title || 'Article',
+      artist: article.source || '',
+      album: 'Read It To Me'
+    });
+    navigator.mediaSession.setActionHandler('play', () => { if (!state.playing || state.paused) togglePlayPause(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (state.playing && !state.paused) togglePlayPause(); });
+    navigator.mediaSession.setActionHandler('stop', () => stopPlayback());
+  } catch (e) {}
 }
 
 function startSpeaking(article) {
@@ -441,16 +553,18 @@ function startSpeaking(article) {
   state.finished = false;
   setPlayIcon(true);
   setStatus('playing', 'Reading article');
+  setMediaSession(article);
+  requestWakeLock();
   speakNextChunk(article);
 }
 
 function speakNextChunk(article) {
   if (!state.playing) return;
   if (state.chunkIndex >= state.chunks.length) {
-    onPhaseEnd();
+    onPhaseEnd(article);
     return;
   }
-  const text = state.chunks[state.chunkIndex];
+  const text = prepareForSpeech(state.chunks[state.chunkIndex]);
   const u = new SpeechSynthesisUtterance(text);
   const v = pickVoice(article.language);
   if (v) u.voice = v;
@@ -459,17 +573,29 @@ function speakNextChunk(article) {
   u.pitch = 1.0;
   u.onend = () => {
     state.chunkIndex += 1;
+    persistResume(article);
     updateProgress();
     speakNextChunk(article);
   };
   u.onerror = (e) => {
     console.warn('TTS error', e);
-    state.chunkIndex += 1;
-    speakNextChunk(article);
+    // Cancellations (e.g. Chrome backgrounding) shouldn't skip a chunk; only
+    // real errors should move past the current one.
+    if (e.error && e.error !== 'canceled' && e.error !== 'interrupted') {
+      state.chunkIndex += 1;
+      persistResume(article);
+    }
+    if (state.playing) speakNextChunk(article);
   };
   state.currentUtterance = u;
   window.speechSynthesis.speak(u);
   updateProgress();
+}
+
+function persistResume(article) {
+  article.resumeIndex = state.chunkIndex;
+  article.totalChunks = state.chunks.length;
+  saveQueue();
 }
 
 function updateProgress() {
@@ -478,7 +604,7 @@ function updateProgress() {
   setProgress(pct);
 }
 
-function onPhaseEnd() {
+function onPhaseEnd(article) {
   // Guard against double-fire (Chrome's speechSynthesis occasionally emits a
   // stray onend after playback has already ended).
   if (state.finished) return;
@@ -488,6 +614,11 @@ function onPhaseEnd() {
   setPlayIcon(false);
   setProgress(100);
   setStatus('idle', 'Finished');
+  if (article) {
+    article.resumeIndex = 0;
+    saveQueue();
+  }
+  releaseWakeLock();
 }
 
 function togglePlayPause() {
@@ -502,11 +633,13 @@ function togglePlayPause() {
     state.paused = false;
     setPlayIcon(true);
     setStatus('playing', 'Reading article');
+    requestWakeLock();
   } else {
     window.speechSynthesis.pause();
     state.paused = true;
     setPlayIcon(false);
     setStatus('paused', 'Paused');
+    releaseWakeLock();
   }
 }
 
@@ -520,6 +653,7 @@ function stopPlayback() {
   setPlayIcon(false);
   setProgress(0);
   setStatus('idle', 'Stopped');
+  releaseWakeLock();
 }
 
 function setPlayIcon(isPlaying) {
@@ -596,17 +730,35 @@ function wire() {
   $('#btn-next').addEventListener('click', playNext);
   $('#btn-replay-article').addEventListener('click', () => {
     const a = findArticle(state.currentId);
-    if (a && a.article) { stopPlayback(); playArticle(a); }
+    if (a && a.article) {
+      stopPlayback();
+      a.resumeIndex = 0;
+      saveQueue();
+      playArticle(a, { fromStart: true });
+    }
   });
 
   $$('.speed-btn').forEach((b) => {
     b.addEventListener('click', () => setSpeed(b.dataset.speed));
   });
 
-  // Keep TTS alive when the tab is active; stop when hidden on mobile to avoid ghost audio
+  // When returning to the tab after it was backgrounded, Chrome may have
+  // paused or dropped the current utterance. Re-acquire the wake lock and
+  // restart from the last confirmed chunk so we don't skip content.
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && state.playing && !state.paused) {
-      // Most mobile browsers will pause automatically; nothing to do.
+    if (document.hidden) return;
+    if (!state.playing || state.paused) return;
+    requestWakeLock();
+    const article = findArticle(state.currentId);
+    if (!article) return;
+    const synth = window.speechSynthesis;
+    if (!synth.speaking) {
+      // Chrome killed our utterance while backgrounded — restart the chunk
+      // that was in flight. chunkIndex hasn't advanced, so no content is lost.
+      synth.cancel();
+      speakNextChunk(article);
+    } else if (synth.paused) {
+      synth.resume();
     }
   });
 }
@@ -641,6 +793,15 @@ function boot() {
   showView('home');
 
   handleShareTarget();
+
+  // If the user was mid-article last session (Chrome killed the tab, phone
+  // rebooted, whatever) — restore that article's player view so the play
+  // button picks up right where they left off.
+  const lastId = localStorage.getItem(STORAGE_KEYS.lastId);
+  if (lastId && !state.currentId) {
+    const a = findArticle(lastId);
+    if (a && a.article && a.resumeIndex > 0) openArticle(lastId);
+  }
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
