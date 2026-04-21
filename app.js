@@ -43,8 +43,33 @@ function categorize(article) {
 const CORS_PROXIES = [
   (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`
+  (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
+  (u) => `https://api.cors.lol/?url=${encodeURIComponent(u)}`
 ];
+
+// Signatures that indicate the response is a bot-check page, login wall, or
+// "access denied" screen rather than the actual article. When we see one of
+// these we treat the proxy as failed and keep trying.
+const BOT_WALL_SIGNATURES = [
+  'access denied', 'accesso negado', 'acesso negado',
+  'please verify you are a human', 'are you a robot',
+  'checking your browser', 'cloudflare',
+  'captcha', 'recaptcha',
+  'attention required',
+  'enable javascript and cookies to continue',
+  'your request has been blocked',
+  '403 forbidden', '401 unauthorized',
+  'you have been blocked',
+  'bot detected', 'security check',
+  'subscribe to continue reading', 'subscribers only'
+];
+
+function looksLikeBotWall(html) {
+  if (!html || html.length < 800) return true;
+  const lower = html.toLowerCase().slice(0, 4000);
+  return BOT_WALL_SIGNATURES.some((sig) => lower.includes(sig));
+}
 
 // ------------------------------------------------------------
 // State
@@ -489,25 +514,66 @@ function trimExtras(text) {
 async function fetchViaProxies(url) {
   const errors = [];
   for (let i = 0; i < CORS_PROXIES.length; i++) {
-    const proxyUrl = CORS_PROXIES[i](url);
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 20000);
-      const resp = await fetch(proxyUrl, { redirect: 'follow', signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!resp.ok) { errors.push(`proxy ${i + 1}: HTTP ${resp.status}`); continue; }
-      const text = await resp.text();
-      if (!text || text.length < 500) {
-        errors.push(`proxy ${i + 1}: empty response (${text.length} bytes)`);
-        continue;
-      }
-      console.log(`[ritm] fetched via proxy ${i + 1} (${text.length} bytes)`);
-      return text;
-    } catch (err) {
-      errors.push(`proxy ${i + 1}: ${err.message || err.name}`);
-    }
+    const html = await tryProxy(CORS_PROXIES[i](url), i + 1, errors);
+    if (html) return html;
   }
-  throw new Error('All proxies failed — ' + errors.join('; '));
+
+  // Live fetch failed everywhere — try the Wayback Machine snapshot instead.
+  // Archived copies aren't protected by the origin's bot wall, so if the page
+  // was ever indexed we usually get clean HTML.
+  try {
+    const archive = await findWaybackUrl(url);
+    if (archive) {
+      console.log('[ritm] falling back to Wayback Machine:', archive);
+      for (let i = 0; i < CORS_PROXIES.length; i++) {
+        const html = await tryProxy(CORS_PROXIES[i](archive), `wayback/${i + 1}`, errors);
+        if (html) return html;
+      }
+    } else {
+      errors.push('wayback: no snapshot available');
+    }
+  } catch (e) {
+    errors.push('wayback: ' + (e.message || e.name));
+  }
+
+  throw new Error('All proxies failed. ' + errors.join('; '));
+}
+
+async function tryProxy(proxyUrl, label, errors) {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    const resp = await fetch(proxyUrl, { redirect: 'follow', signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!resp.ok) { errors.push(`proxy ${label}: HTTP ${resp.status}`); return null; }
+    const text = await resp.text();
+    if (!text || text.length < 500) {
+      errors.push(`proxy ${label}: empty (${text.length} bytes)`);
+      return null;
+    }
+    if (looksLikeBotWall(text)) {
+      errors.push(`proxy ${label}: bot wall / access denied`);
+      return null;
+    }
+    console.log(`[ritm] fetched via proxy ${label} (${text.length} bytes)`);
+    return text;
+  } catch (err) {
+    errors.push(`proxy ${label}: ${err.message || err.name}`);
+    return null;
+  }
+}
+
+// Look up the most recent archived snapshot on the Wayback Machine. Returns
+// the raw HTML URL (with the `if_` prefix that strips the Wayback toolbar) or
+// null if no snapshot exists.
+async function findWaybackUrl(url) {
+  const lookup = `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`;
+  const resp = await fetch(lookup);
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  const snap = data && data.archived_snapshots && data.archived_snapshots.closest;
+  if (!snap || !snap.available || !snap.url) return null;
+  return snap.url.replace(/\/web\/(\d+)\//, '/web/$1if_/');
 }
 
 function extractWithReadability(html, sourceUrl) {
@@ -697,6 +763,7 @@ function startSpeaking(article) {
     return;
   }
   window.speechSynthesis.cancel();
+  moveArticleToTop(article.id);
   state.playing = true;
   state.paused = false;
   state.finished = false;
@@ -705,6 +772,15 @@ function startSpeaking(article) {
   setMediaSession(article);
   requestWakeLock();
   speakNextChunk(article);
+}
+
+function moveArticleToTop(id) {
+  const idx = state.queue.findIndex((a) => a.id === id);
+  if (idx <= 0) return;
+  const [a] = state.queue.splice(idx, 1);
+  state.queue.unshift(a);
+  saveQueue();
+  renderQueues();
 }
 
 function speakNextChunk(article) {
@@ -763,20 +839,30 @@ function onPhaseEnd(article) {
   setPlayIcon(false);
   setProgress(100);
   setStatus('idle', 'Finished');
-  if (article) {
-    article.resumeIndex = 0;
-    saveQueue();
-  }
   releaseWakeLock();
 
-  // Auto-advance when bulk playback is active (Play all / Play group).
-  if (article && state.playScope) {
-    const next = nextInScope(article.id);
-    if (next) {
-      setTimeout(() => openArticle(next.id, { autoPlay: true }), 600);
-    } else {
-      state.playScope = null;
-    }
+  if (!article) return;
+
+  // Resolve the next article *before* we remove the finished one, since
+  // nextInScope needs to find the current item's position.
+  const next = state.playScope ? nextInScope(article.id) : null;
+
+  // Listened → discarded. Drop it from the queue.
+  const idx = state.queue.findIndex((a) => a.id === article.id);
+  if (idx !== -1) state.queue.splice(idx, 1);
+  if (state.currentId === article.id) state.currentId = null;
+  localStorage.removeItem(STORAGE_KEYS.lastId);
+  saveQueue();
+  renderQueues();
+
+  if (next) {
+    setTimeout(() => openArticle(next.id, { autoPlay: true }), 600);
+  } else {
+    state.playScope = null;
+    // Leave the "Finished" state visible briefly, then go back.
+    setTimeout(() => {
+      if (state.view === 'player') showView(state.queue.length ? 'queue' : 'home');
+    }, 1500);
   }
 }
 

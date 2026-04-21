@@ -419,13 +419,14 @@ input[type="file"] {
   gap: 10px;
   padding: 12px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
 
 .queue-item.active {
-  border-color: var(--primary);
+  border: 3px solid var(--primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent), var(--shadow);
 }
 
 .queue-item .qi-main {
