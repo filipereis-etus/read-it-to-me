@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#f7f5f1" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="description" content="Share articles to this app and have them read aloud with AI" />
+  <meta name="description" content="An editorial audio app. Share articles and have them read aloud." />
   <title>Read It To Me</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -17,12 +20,21 @@
     <!-- Top bar -->
     <header class="topbar">
       <button class="icon-btn" id="btn-queue" aria-label="Queue">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M3 6h13v2H3zm0 5h13v2H3zm0 5h8v2H3zm15-5v8l6-4z"/></svg>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M3 6h13M3 12h13M3 18h8"/>
+          <path d="M18 10l5 4-5 4z" fill="currentColor" stroke="none"/>
+        </svg>
         <span class="badge" id="queue-badge" hidden>0</span>
       </button>
-      <h1 class="title">Read It To Me</h1>
+      <div class="topbar-wordmark">
+        <div class="topbar-overline">Daily · Issue</div>
+        <div class="topbar-title">Read It To Me</div>
+      </div>
       <button class="icon-btn" id="btn-settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19.14 12.94a7.43 7.43 0 0 0 .06-.94 7.43 7.43 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.62-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.3 7.3 0 0 0-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.66 8.48a.5.5 0 0 0 .12.64l2.03 1.58A7.43 7.43 0 0 0 4.75 12a7.43 7.43 0 0 0 .06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.5.38 1.05.7 1.62.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.57-.24 1.12-.56 1.62-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
       </button>
     </header>
 
@@ -55,78 +67,172 @@
       <!-- HOME VIEW -->
       <section class="view" id="view-home">
         <div class="container">
+          <!-- Editorial hero — date + greeting. Text is swapped in JS based on queue state. -->
           <div class="hero">
-            <svg class="hero-icon" viewBox="0 0 24 24" width="64" height="64"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9zm1 14h-2v-2h2zm0-4h-2V7h2z"/></svg>
-            <h2>Paste a link or share one</h2>
-            <p class="muted">Use your browser's share menu to send articles here, or paste a URL below.</p>
+            <div class="overline hero-overline" id="home-date">—</div>
+            <h1 class="hero-title" id="home-greeting">Your reading<br/>list, <em>spoken</em>.</h1>
           </div>
+
+          <!-- URL input row -->
           <div class="url-row">
-            <input type="url" id="url-input" placeholder="https://example.com/article" inputmode="url" autocomplete="off" />
-            <button class="icon-btn paste-btn" id="btn-paste" aria-label="Paste from clipboard">
-              <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 2h-4.18C14.4.84 13.3 0 12 0s-2.4.84-2.82 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1-1 1 1 1 0 0 1 1-1zm7 18H5V4h2v3h10V4h2z"/></svg>
+            <div class="url-row-input">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              <input type="url" id="url-input" placeholder="Paste a link…" inputmode="url" autocomplete="off" />
+            </div>
+            <button class="paste-btn" id="btn-paste" aria-label="Paste from clipboard">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="8" y="2" width="8" height="4" rx="1"/>
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+              </svg>
             </button>
-            <button class="btn primary" id="btn-add-url">Add</button>
+            <button class="add-btn" id="btn-add-url">Add</button>
           </div>
-          <button class="btn ghost full" id="btn-open-import">Import URL list…</button>
-          <div id="empty-queue" class="empty">
-            <p class="muted">No articles yet. Shared articles will appear in the queue.</p>
+
+          <!-- Onboarding (shown when queue empty) -->
+          <div id="empty-queue" class="onboarding-section">
+            <div class="overline">Three ways in</div>
+            <button class="onboarding-card" data-action="share-help">
+              <span class="onboarding-num">01</span>
+              <div class="onboarding-body">
+                <div class="onboarding-title">Share from anywhere</div>
+                <div class="onboarding-desc">Use your browser or any app's share menu to send articles straight here.</div>
+              </div>
+              <svg class="onboarding-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button class="onboarding-card" data-action="focus-url">
+              <span class="onboarding-num">02</span>
+              <div class="onboarding-body">
+                <div class="onboarding-title">Paste a URL above</div>
+                <div class="onboarding-desc">Drop any article link in the field and hit Add.</div>
+              </div>
+              <svg class="onboarding-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button class="onboarding-card" data-action="open-import">
+              <span class="onboarding-num">03</span>
+              <div class="onboarding-body">
+                <div class="onboarding-title">Import a URL list</div>
+                <div class="onboarding-desc">Drop in a Chrome bookmarks export, a .txt file, or just paste a blob.</div>
+              </div>
+              <svg class="onboarding-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
           </div>
-          <ul id="home-queue" class="queue-list"></ul>
+
+          <!-- Populated home body -->
+          <div id="home-populated" hidden>
+            <div id="resume-slot"></div>
+            <div class="up-next-row">
+              <div class="overline" id="home-upnext-label">Up next · 0 in queue</div>
+              <button class="see-all" id="btn-see-all">See all</button>
+            </div>
+            <ul id="home-queue" class="queue-list"></ul>
+          </div>
         </div>
       </section>
 
       <!-- PLAYER VIEW -->
       <section class="view" id="view-player" hidden>
-        <div class="container">
-          <button class="btn ghost back-btn" id="btn-back">← Back</button>
-          <div class="article-meta">
-            <div class="source" id="article-source">—</div>
-            <h2 id="article-title">Loading…</h2>
-            <div class="meta-row">
-              <span id="article-reading-time">—</span>
-              <span id="article-lang"></span>
+        <div class="player-glow" id="player-glow"></div>
+        <div class="player-container">
+          <div class="container">
+            <div class="player-topactions">
+              <button class="back-link" id="btn-back">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                Queue
+              </button>
             </div>
-          </div>
 
-          <div class="status-card" id="status-card">
-            <div class="status-line">
-              <span class="dot" id="status-dot"></span>
-              <span id="status-text">Idle</span>
+            <div class="player-cat-row">
+              <div class="player-cat-mark" id="player-cat-mark">
+                <!-- glyph injected by JS -->
+              </div>
+              <div>
+                <div class="player-cat-label" id="player-cat-label">—</div>
+                <div class="player-cat-sub" id="player-cat-sub">—</div>
+              </div>
+            </div>
+
+            <h1 class="player-title" id="article-title">Loading…</h1>
+            <!-- Hidden legacy targets kept for JS compatibility -->
+            <span id="article-source" hidden></span>
+            <span id="article-reading-time" hidden></span>
+            <span id="article-lang" hidden></span>
+
+            <!-- Integrated status + progress -->
+            <div class="player-status" id="status-card">
+              <span id="status-dot-wrap">
+                <span class="status-dot" id="status-dot"></span>
+              </span>
+              <span class="status-text" id="status-text">Ready</span>
+              <span class="status-sep">·</span>
+              <span class="status-tail" id="status-tail">tap play to start</span>
             </div>
             <div class="progress-wrap">
-              <div class="progress-bar" id="progress-bar"></div>
+              <div class="progress-track"></div>
+              <div class="progress-fill" id="progress-bar"></div>
+              <div class="progress-knob" id="progress-knob"></div>
             </div>
-          </div>
+            <div class="timecodes">
+              <span id="time-elapsed">0:00</span>
+              <span id="time-remaining">—</span>
+            </div>
 
-          <div class="player-controls">
             <div class="speed-row">
               <button class="speed-btn" data-speed="1">1x</button>
               <button class="speed-btn" data-speed="1.25">1.25x</button>
               <button class="speed-btn active" data-speed="1.5">1.5x</button>
               <button class="speed-btn" data-speed="2">2x</button>
             </div>
+
             <div class="transport">
               <button class="transport-btn" id="btn-prev" aria-label="Previous">
-                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
               </button>
               <button class="transport-btn main" id="btn-playpause" aria-label="Play/Pause">
-                <svg id="icon-play" viewBox="0 0 24 24" width="44" height="44"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
-                <svg id="icon-pause" viewBox="0 0 24 24" width="44" height="44" hidden><path fill="currentColor" d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                <svg id="icon-play" viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" viewBox="0 0 24 24" width="34" height="34" fill="currentColor" hidden>
+                  <rect x="6" y="4" width="4.5" height="16" rx="1.5"/>
+                  <rect x="13.5" y="4" width="4.5" height="16" rx="1.5"/>
+                </svg>
               </button>
               <button class="transport-btn" id="btn-next" aria-label="Next">
-                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
               </button>
             </div>
-            <div class="secondary-row">
-              <button class="btn ghost" id="btn-stop">Stop</button>
-              <button class="btn ghost" id="btn-replay-article">Replay from start</button>
-            </div>
-          </div>
 
-          <details class="article-body">
-            <summary>Show article text</summary>
-            <div id="article-text"></div>
-          </details>
+            <div class="secondary-row">
+              <button class="secondary-btn" id="btn-replay-article">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                <span>Replay</span>
+              </button>
+              <button class="secondary-btn" id="btn-stop">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+                <span>Stop</span>
+              </button>
+              <button class="secondary-btn" id="btn-toggle-text">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+                <span>Text</span>
+              </button>
+            </div>
+
+            <!-- Up next preview -->
+            <div class="upnext" id="upnext-slot" hidden>
+              <div class="upnext-label">Up next</div>
+              <div class="upnext-sep"></div>
+              <div class="upnext-body">
+                <div class="upnext-cat" id="upnext-cat">—</div>
+                <div class="upnext-title" id="upnext-title">—</div>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color: var(--ink-faint); flex-shrink: 0;"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+
+            <details class="article-body" id="article-body-pullout">
+              <summary>Article text</summary>
+              <div id="article-text"></div>
+            </details>
+          </div>
         </div>
       </section>
 
@@ -134,12 +240,25 @@
       <section class="view" id="view-queue" hidden>
         <div class="container">
           <button class="btn ghost back-btn" id="btn-queue-back">← Back</button>
-          <h2>Queue</h2>
+
+          <div class="queue-header">
+            <div class="overline">The queue</div>
+            <div class="queue-headline">
+              <div class="queue-headline-main" id="queue-count-big">0 articles</div>
+              <div class="queue-headline-meta" id="queue-count-meta">—</div>
+            </div>
+          </div>
+
           <div class="queue-actions" id="queue-actions">
-            <button class="btn primary" id="btn-play-all">▶ Play all</button>
+            <button class="btn primary" id="btn-play-all">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              Play all
+            </button>
             <button class="btn ghost" id="btn-open-import-queue">Import…</button>
           </div>
+
           <div id="grouped-queue"></div>
+
           <div id="queue-empty" class="empty" hidden>
             <p class="muted">Your queue is empty.</p>
           </div>
@@ -151,7 +270,7 @@
         <div class="container">
           <button class="btn ghost back-btn" id="btn-import-back">← Back</button>
           <h2>Import URL list</h2>
-          <p class="muted">Paste any text — we'll pull every URL out of it. You can also upload a bookmarks export from Chrome (the HTML file) or a plain .txt file.</p>
+          <p class="muted">Paste any text — we'll pull every URL out of it. You can also upload a Chrome bookmarks export (HTML) or a plain .txt file.</p>
 
           <label class="field">
             <span>Paste text or URLs</span>
@@ -159,7 +278,7 @@
           </label>
 
           <label class="field">
-            <span>Or upload a file (.html, .txt)</span>
+            <span>Or upload a file</span>
             <input type="file" id="import-file" accept=".html,.htm,.txt,.csv,.json" />
           </label>
 
@@ -173,7 +292,6 @@
       </section>
     </main>
 
-    <!-- Toast -->
     <div id="toast" class="toast" hidden></div>
   </div>
 

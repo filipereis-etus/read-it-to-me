@@ -15,33 +15,64 @@ const STORAGE_KEYS = {
 // by stripping non-alphanumerics so "tech-news" and "tech news" both match.
 const CATEGORIES = [
   { name: 'Tech', keywords: ['tech', 'technology', 'tecnologia', 'software', 'startup', 'programming', 'programacao', 'coding', 'developer', 'desenvolvedor', 'ai', 'artificial', 'inteligencia', 'ia', 'machine', 'learning', 'ml', 'android', 'iphone', 'gadget', 'apple', 'google', 'chromium', 'chrome', 'microsoft', 'github', 'open source', 'app', 'internet'] },
-  { name: 'Business & Finance', keywords: ['business', 'negocios', 'market', 'mercado', 'stock', 'stocks', 'acoes', 'economy', 'economia', 'invest', 'investor', 'investir', 'finance', 'financas', 'financeiro', 'ceo', 'company', 'empresa', 'deal', 'ipo', 'banking', 'banco', 'bank', 'fundos', 'startup funding'] },
+  { name: 'Business', keywords: ['business', 'negocios', 'market', 'mercado', 'stock', 'stocks', 'acoes', 'economy', 'economia', 'invest', 'investor', 'investir', 'finance', 'financas', 'financeiro', 'ceo', 'company', 'empresa', 'deal', 'ipo', 'banking', 'banco', 'bank', 'fundos', 'startup funding'] },
   { name: 'Politics', keywords: ['politics', 'political', 'politica', 'election', 'eleicao', 'eleicoes', 'government', 'governo', 'congress', 'congresso', 'senate', 'senado', 'vote', 'voto', 'president', 'presidente', 'parliament', 'camara', 'deputado', 'supreme court', 'stf'] },
   { name: 'Sports', keywords: ['sport', 'sports', 'esporte', 'esportes', 'football', 'futebol', 'soccer', 'basketball', 'basquete', 'nba', 'nfl', 'fifa', 'olympic', 'olimpiada', 'tennis', 'racing', 'baseball', 'hockey', 'ufc', 'mma'] },
   { name: 'Science', keywords: ['science', 'ciencia', 'research', 'pesquisa', 'study', 'estudo', 'discovery', 'descoberta', 'astronomy', 'astronomia', 'biology', 'biologia', 'physics', 'fisica', 'chemistry', 'quimica', 'nasa', 'space', 'espaco'] },
   { name: 'Health', keywords: ['health', 'saude', 'medic', 'medicine', 'medicina', 'disease', 'doenca', 'doctor', 'medico', 'hospital', 'covid', 'vaccine', 'vacina', 'fitness', 'nutrition', 'nutricao', 'wellness', 'mental'] },
-  { name: 'Culture & Entertainment', keywords: ['culture', 'cultura', 'entertainment', 'entretenimento', 'movie', 'movies', 'filme', 'filmes', 'film', 'music', 'musica', 'book', 'books', 'livro', 'album', 'celebrity', 'celebridade', 'tv', 'show', 'serie', 'series', 'netflix', 'art', 'arte', 'theater', 'teatro', 'games', 'gaming'] },
+  { name: 'Culture', keywords: ['culture', 'cultura', 'entertainment', 'entretenimento', 'movie', 'movies', 'filme', 'filmes', 'film', 'music', 'musica', 'book', 'books', 'livro', 'album', 'celebrity', 'celebridade', 'tv', 'show', 'serie', 'series', 'netflix', 'art', 'arte', 'theater', 'teatro', 'games', 'gaming'] },
   { name: 'World', keywords: ['world', 'mundo', 'international', 'internacional', 'global', 'foreign', 'ukraine', 'ucrania', 'russia', 'russia', 'china', 'europe', 'europa', 'asia', 'africa', 'americas', 'middle east', 'oriente medio'] },
   { name: 'Opinion', keywords: ['opinion', 'opiniao', 'editorial', 'column', 'coluna', 'colunista', 'essay', 'ensaio', 'analysis', 'analise'] }
 ];
 
-// Muted accent colors per category. Kept a bit desaturated so they read as
-// soft indicators rather than UI chrome.
-const CATEGORY_COLORS = {
-  'Tech': '#6366f1',                      // indigo
-  'Business & Finance': '#10b981',        // emerald
-  'Politics': '#64748b',                  // slate
-  'Sports': '#f59e0b',                    // amber
-  'Science': '#06b6d4',                   // cyan
-  'Health': '#ec4899',                    // pink
-  'Culture & Entertainment': '#a855f7',   // purple
-  'World': '#3b82f6',                     // blue
-  'Opinion': '#eab308',                   // yellow
-  'Other': '#94a3b8'                      // neutral
+// Legacy category names from earlier versions → current canonical names.
+const CATEGORY_ALIASES = {
+  'Business & Finance': 'Business',
+  'Culture & Entertainment': 'Culture'
 };
 
+// Category accent colors — Reader's Radio palette, rebalanced for warm paper
+// tones. Each entry has a light-mode and dark-mode value; we pick one based on
+// the system theme.
+const CATEGORY_COLORS = {
+  'Tech':      { light: '#5754d1', dark: '#8c89ff' },
+  'Business':  { light: '#0e8a58', dark: '#3dd197' },
+  'Politics':  { light: '#5b6272', dark: '#9aa0ae' },
+  'Sports':    { light: '#dc8a13', dark: '#ffb84a' },
+  'Science':   { light: '#0d8aa4', dark: '#4fd0e8' },
+  'Health':    { light: '#d43b7a', dark: '#ff7fae' },
+  'Culture':   { light: '#8a4bc9', dark: '#c28dff' },
+  'World':     { light: '#2866c7', dark: '#6fa5ff' },
+  'Opinion':   { light: '#b38a00', dark: '#ffd659' },
+  'Other':     { light: '#8a8579', dark: '#9aa0ae' }
+};
+
+function isDarkMode() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 function colorForCategory(name) {
-  return CATEGORY_COLORS[name] || CATEGORY_COLORS['Other'];
+  const pair = CATEGORY_COLORS[name] || CATEGORY_COLORS['Other'];
+  return pair[isDarkMode() ? 'dark' : 'light'];
+}
+
+// Per-category glyph. SVG inner markup; caller wraps in a sized <svg>.
+const CATEGORY_GLYPHS = {
+  Tech:     '<rect x="4" y="7" width="16" height="10" rx="1.5"/><path d="M8 21h8"/>',
+  Business: '<path d="M4 18l5-5 4 3 7-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="8" r="1.6" fill="currentColor"/>',
+  Politics: '<path d="M12 3v18M5 8l7-5 7 5H5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+  Sports:   '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  Science:  '<circle cx="12" cy="12" r="3" fill="currentColor"/><ellipse cx="12" cy="12" rx="9" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(60 12 12)" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  Health:   '<path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z" fill="currentColor"/>',
+  Culture:  '<path d="M12 3l2.4 5.7 6.1.5-4.7 4 1.5 6-5.3-3.3-5.3 3.3 1.5-6-4.7-4 6.1-.5z" fill="currentColor"/>',
+  World:    '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+  Opinion:  '<path d="M5 17V6h10l4 4v7a1 1 0 0 1-1 1h-5l-3 3v-3H6a1 1 0 0 1-1-1z" fill="currentColor"/>',
+  Other:    '<circle cx="12" cy="12" r="3" fill="currentColor"/>'
+};
+
+function categoryGlyphSvg(name, size = 22) {
+  const inner = CATEGORY_GLYPHS[name] || CATEGORY_GLYPHS['Other'];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="currentColor">${inner}</svg>`;
 }
 
 function categorize(article) {
@@ -146,13 +177,67 @@ function toast(msg, ms = 2400) {
 }
 
 function setStatus(phase, text) {
-  const dot = $('#status-dot');
-  dot.className = 'dot ' + phase;
-  $('#status-text').textContent = text;
+  const wrap = $('#status-dot-wrap');
+  const textEl = $('#status-text');
+  const tailEl = $('#status-tail');
+  textEl.textContent = text;
+
+  // Swap waveform/dot based on phase — waveform when playing, solid dot otherwise.
+  const showWave = phase === 'playing';
+  if (showWave) {
+    wrap.innerHTML = '<span class="wave-bars animate"><span></span><span></span><span></span><span></span></span>';
+  } else {
+    wrap.innerHTML = '<span class="status-dot"></span>';
+  }
+
+  // Tail text follows the phase: estimated time left while playing, hint otherwise.
+  const article = findArticle(state.currentId);
+  if (article && state.chunks.length && phase === 'playing') {
+    const remaining = estimateTime(article, state.chunks.length - state.chunkIndex);
+    tailEl.textContent = `${formatClock(remaining)} left`;
+  } else if (article && article.resumeIndex > 0 && phase !== 'playing') {
+    tailEl.textContent = 'tap play to resume';
+  } else if (phase === 'idle' || phase === 'error') {
+    tailEl.textContent = phase === 'error' ? '' : 'tap play to start';
+  } else {
+    tailEl.textContent = '';
+  }
 }
 
 function setProgress(pct) {
-  $('#progress-bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+  const clamped = Math.max(0, Math.min(100, pct));
+  const fill = $('#progress-bar');
+  const knob = $('#progress-knob');
+  if (fill) fill.style.width = clamped + '%';
+  if (knob) knob.style.left = clamped + '%';
+
+  // Time codes (best-effort estimate from chunk progress).
+  const article = findArticle(state.currentId);
+  const total = state.chunks.length;
+  if (article && total) {
+    const elapsed = estimateTime(article, state.chunkIndex);
+    const remaining = estimateTime(article, total - state.chunkIndex);
+    const el = $('#time-elapsed'); if (el) el.textContent = formatClock(elapsed);
+    const rem = $('#time-remaining'); if (rem) rem.textContent = `-${formatClock(remaining)}`;
+  } else if (article) {
+    const el = $('#time-elapsed'); if (el) el.textContent = '0:00';
+    const rem = $('#time-remaining'); if (rem) rem.textContent = article.readingMinutes ? `-${article.readingMinutes}:00` : '—';
+  }
+}
+
+function estimateTime(article, chunkCount) {
+  if (!article || !article.article || !state.chunks.length) return 0;
+  const totalWords = article.article.split(/\s+/).length;
+  const wordsPerChunk = totalWords / state.chunks.length;
+  const words = chunkCount * wordsPerChunk;
+  return Math.round(words / (200 * state.speed) * 60);
+}
+
+function formatClock(seconds) {
+  seconds = Math.max(0, Math.round(seconds));
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
 function updateQueueBadge() {
@@ -186,8 +271,12 @@ function loadQueue() {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return;
     state.queue = parsed;
-    // Backfill categories for items saved before the classifier existed.
-    for (const a of state.queue) if (!a.category) a.category = categorize(a);
+    // Migrate legacy long category names → current short names; backfill
+    // categories for items saved before the classifier existed.
+    for (const a of state.queue) {
+      if (a.category && CATEGORY_ALIASES[a.category]) a.category = CATEGORY_ALIASES[a.category];
+      if (!a.category) a.category = categorize(a);
+    }
   } catch (e) {}
 }
 
@@ -298,10 +387,10 @@ let homeListStale = true;
 let groupListStale = true;
 
 function renderQueues() {
-  $('#empty-queue').hidden = state.queue.length > 0;
   $('#queue-empty').hidden = state.queue.length > 0;
   $('#queue-actions').style.display = state.queue.length ? '' : 'none';
   updateQueueBadge();
+  renderQueueHeader();
 
   homeListStale = true;
   groupListStale = true;
@@ -324,17 +413,40 @@ function renderGroupedListIfStale() {
 function renderFlatList(ul) {
   ul.innerHTML = '';
   const total = state.queue.length;
-  const limit = Math.min(state.homeVisible, total);
+
+  // Toggle empty vs populated containers and update the hero copy to match.
+  updateHomeHero(total);
+  $('#empty-queue').hidden = total > 0;
+  $('#home-populated').hidden = total === 0;
+  if (total === 0) return;
+
+  // Resume card — if there's a currently playing / paused article, surface it
+  // at the top as a condensed player.
+  const resumeSlot = $('#resume-slot');
+  resumeSlot.innerHTML = '';
+  const current = state.currentId ? findArticle(state.currentId) : null;
+  const startIndex = current ? 1 : 0;
+  if (current && current.article) {
+    resumeSlot.appendChild(renderResumeCard(current));
+  }
+
+  $('#home-upnext-label').textContent = current
+    ? `Up next · ${Math.max(0, total - 1)} in queue`
+    : `Up next · ${total} in queue`;
+
+  // Remaining queue as editorial rows.
+  const remaining = current ? state.queue.filter((a) => a.id !== current.id) : state.queue;
+  const limit = Math.min(state.homeVisible, remaining.length);
   const frag = document.createDocumentFragment();
-  for (let i = 0; i < limit; i++) frag.appendChild(renderQueueItem(state.queue[i]));
+  for (let i = 0; i < limit; i++) frag.appendChild(renderHomeRow(remaining[i]));
   ul.appendChild(frag);
 
-  if (total > limit) {
+  if (remaining.length > limit) {
     const li = document.createElement('li');
     li.className = 'queue-more';
     li.innerHTML = `
-      <button class="btn ghost full" data-action="home-more">Show more (${total - limit} hidden)</button>
-      <button class="btn ghost full" data-action="open-queue">See full queue · ${total} articles</button>
+      <button class="btn ghost full" data-action="home-more">Show ${Math.min(HOME_PAGE_SIZE, remaining.length - limit)} more</button>
+      <button class="btn ghost full" data-action="open-queue">See full queue · ${total} articles →</button>
     `;
     li.querySelector('[data-action="home-more"]').addEventListener('click', () => {
       state.homeVisible += HOME_PAGE_SIZE;
@@ -345,24 +457,139 @@ function renderFlatList(ul) {
   }
 }
 
+function renderHomeRow(item) {
+  const li = document.createElement('li');
+  li.className = 'home-row';
+  li.style.setProperty('--cat-color', colorForCategory(item.category || 'Other'));
+  li.innerHTML = `
+    <div class="home-row-strip"></div>
+    <div class="home-row-body">
+      <div class="home-row-meta">
+        <span class="home-row-cat">${escapeHtml(item.category || 'Other')}</span>
+        <span class="qi-dot">·</span>
+        <span class="muted" style="font-size: 11px;">${escapeHtml((item.source || '').replace(/^www\./, ''))}</span>
+      </div>
+      <div class="home-row-title">${escapeHtml(item.title || item.url)}</div>
+      <div class="home-row-sub">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>${item.readingMinutes ? item.readingMinutes + ' min' : '—'}</span>
+        ${item.language ? `<span>·</span><span>${escapeHtml(item.language.slice(0, 2).toUpperCase())}</span>` : ''}
+      </div>
+    </div>
+    <button class="home-row-play" aria-label="Play">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+  `;
+  li.querySelector('.home-row-body').addEventListener('click', () => openArticle(item.id));
+  li.querySelector('.home-row-play').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openArticle(item.id, { autoPlay: true });
+  });
+  return li;
+}
+
+function renderResumeCard(article) {
+  const card = document.createElement('div');
+  card.className = 'resume-card';
+  const cat = article.category || 'Other';
+  card.style.setProperty('--cat-color', colorForCategory(cat));
+  const pct = article.totalChunks ? Math.round((article.resumeIndex / article.totalChunks) * 100) : 0;
+  const isPlaying = state.playing && !state.paused && state.currentId === article.id;
+  card.innerHTML = `
+    <div class="resume-head">
+      ${isPlaying ? '<span class="wave-bars animate"><span></span><span></span><span></span></span>' : '<span class="status-dot"></span>'}
+      <span class="resume-head-label">${isPlaying ? 'Now playing' : 'Continue'} · ${escapeHtml(cat)}</span>
+    </div>
+    <div class="resume-title">${escapeHtml(article.title || article.url)}</div>
+    <div class="resume-row">
+      <div class="resume-progress"><div class="resume-progress-fill" style="width: ${pct}%"></div></div>
+      <span class="resume-time">${pct}%</span>
+      <button class="resume-play" aria-label="Open player">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          ${isPlaying ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>' : '<path d="M8 5v14l11-7z"/>'}
+        </svg>
+      </button>
+    </div>
+  `;
+  card.addEventListener('click', () => openArticle(article.id));
+  return card;
+}
+
+function updateHomeHero(total) {
+  const greeting = $('#home-greeting');
+  const dateEl = $('#home-date');
+  dateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  if (total === 0) {
+    greeting.innerHTML = 'Your reading<br>list, <em>spoken</em>.';
+  } else if (state.currentId) {
+    greeting.innerHTML = 'Good morning,<br>ready when <em>you are</em>.';
+  } else {
+    greeting.innerHTML = `${total} ${total === 1 ? 'article' : 'articles'}<br>in the <em>queue</em>.`;
+  }
+}
+
+function renderQueueHeader() {
+  const total = state.queue.length;
+  $('#queue-count-big').textContent = `${total} ${total === 1 ? 'article' : 'articles'}`;
+  const totalMinutes = state.queue.reduce((n, a) => n + (a.readingMinutes || 4), 0);
+  $('#queue-count-meta').textContent = `· ${formatDuration(totalMinutes)} listen`;
+}
+
 function renderQueueItem(item) {
   const li = document.createElement('li');
-  li.className = 'queue-item' + (item.id === state.currentId ? ' active' : '');
+  const isActive = item.id === state.currentId && state.playing && !state.paused;
+  li.className = 'queue-item' + (isActive ? ' active' : '');
   li.style.setProperty('--cat-color', colorForCategory(item.category || 'Other'));
 
   const main = document.createElement('div');
   main.className = 'qi-main';
-  main.innerHTML = `
-    <div class="qi-source">${escapeHtml(item.source || '')}${item.category ? ' · ' + escapeHtml(item.category) : ''}</div>
-    <div class="qi-title">${escapeHtml(item.title || item.url)}</div>
-    <div class="qi-meta">${item.readingMinutes ? item.readingMinutes + ' min read · ' : ''}${escapeHtml(statusLabel(item))}</div>
+
+  const sourceRow = document.createElement('div');
+  sourceRow.className = 'qi-source-row';
+  const source = document.createElement('span');
+  source.className = 'qi-source';
+  source.textContent = (item.source || '').replace(/^www\./, '');
+  sourceRow.appendChild(source);
+
+  if (isActive) {
+    const sep = document.createElement('span');
+    sep.className = 'qi-dot'; sep.textContent = '·';
+    const state_ = document.createElement('span');
+    state_.className = 'qi-state';
+    state_.innerHTML = `<span class="wave-bars animate"><span></span><span></span><span></span></span> Playing`;
+    sourceRow.appendChild(sep);
+    sourceRow.appendChild(state_);
+  } else if (item.status === 'error') {
+    const sep = document.createElement('span');
+    sep.className = 'qi-dot'; sep.textContent = '·';
+    const state_ = document.createElement('span');
+    state_.className = 'qi-state error';
+    state_.textContent = 'Error';
+    sourceRow.appendChild(sep);
+    sourceRow.appendChild(state_);
+  }
+
+  const title = document.createElement('div');
+  title.className = 'qi-title';
+  title.textContent = item.title || item.url;
+
+  const meta = document.createElement('div');
+  meta.className = 'qi-meta';
+  meta.innerHTML = `
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <span>${item.readingMinutes ? item.readingMinutes + ' min' : '—'}</span>
+    ${item.language ? `<span>·</span><span>${escapeHtml(item.language.slice(0, 2).toUpperCase())}</span>` : ''}
   `;
+
+  main.appendChild(sourceRow);
+  main.appendChild(title);
+  main.appendChild(meta);
   main.addEventListener('click', () => openArticle(item.id));
 
   const rm = document.createElement('button');
   rm.className = 'qi-remove';
   rm.setAttribute('aria-label', 'Remove');
-  rm.textContent = '✕';
+  rm.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
   rm.addEventListener('click', (e) => { e.stopPropagation(); removeArticle(item.id); });
 
   li.appendChild(main);
@@ -396,15 +623,23 @@ function renderGroupedQueue(container) {
     section.className = 'queue-group';
     section.style.setProperty('--cat-color', color);
 
-    const header = document.createElement('div');
-    header.className = 'queue-group-header';
-    header.innerHTML = `<div class="queue-group-title"><span class="cat-dot"></span>${escapeHtml(cat)}<span class="queue-group-count">· ${items.length}</span></div>`;
-    const playBtn = document.createElement('button');
-    playBtn.className = 'qgroup-play-btn';
-    playBtn.textContent = '▶ Play group';
-    playBtn.addEventListener('click', () => playGroup(cat));
-    header.appendChild(playBtn);
-    section.appendChild(header);
+    // Chunky group header card — mark + serif name + count + Play group pill.
+    const headerCard = document.createElement('div');
+    headerCard.className = 'group-header-card';
+    const totalMinutes = items.reduce((n, a) => n + (a.readingMinutes || 4), 0);
+    headerCard.innerHTML = `
+      <div class="group-mark">${categoryGlyphSvg(cat, 22)}</div>
+      <div class="group-info">
+        <div class="group-title">${escapeHtml(cat)}</div>
+        <div class="group-count">${items.length} article${items.length === 1 ? '' : 's'} · ${formatDuration(totalMinutes)}</div>
+      </div>
+      <button class="group-play-btn" type="button">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Play group
+      </button>
+    `;
+    headerCard.querySelector('.group-play-btn').addEventListener('click', () => playGroup(cat));
+    section.appendChild(headerCard);
 
     const ul = document.createElement('ul');
     ul.className = 'queue-list';
@@ -416,8 +651,8 @@ function renderGroupedQueue(container) {
 
     if (items.length > visible) {
       const moreBtn = document.createElement('button');
-      moreBtn.className = 'btn ghost full more-btn';
-      moreBtn.textContent = `Show more (${items.length - visible} hidden)`;
+      moreBtn.className = 'more-btn';
+      moreBtn.textContent = `Show ${items.length - visible} more in ${cat}`;
       moreBtn.addEventListener('click', () => {
         state.groupVisible.set(cat, visible + GROUP_PAGE_SIZE);
         renderQueues();
@@ -425,7 +660,7 @@ function renderGroupedQueue(container) {
       section.appendChild(moreBtn);
     } else if (visible > GROUP_PAGE_SIZE) {
       const lessBtn = document.createElement('button');
-      lessBtn.className = 'btn ghost full more-btn';
+      lessBtn.className = 'more-btn';
       lessBtn.textContent = 'Collapse';
       lessBtn.addEventListener('click', () => {
         state.groupVisible.delete(cat);
@@ -438,6 +673,14 @@ function renderGroupedQueue(container) {
   }
 
   container.appendChild(outerFrag);
+}
+
+function formatDuration(minutes) {
+  if (!minutes) return '—';
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `~${h}h` : `~${h}h ${m}m`;
 }
 
 function statusLabel(item) {
@@ -509,11 +752,65 @@ function playGroup(category) {
 }
 
 function renderPlayer(article) {
+  const cat = article.category || 'Other';
+  const color = colorForCategory(cat);
+  const view = $('#view-player');
+  view.style.setProperty('--cat-color', color);
+
+  $('#player-cat-mark').innerHTML = categoryGlyphSvg(cat, 19);
+  const src = article.source ? article.source.replace(/^www\./, '') : '';
+  $('#player-cat-label').textContent = src ? `${cat} · ${src}` : cat;
+  $('#player-cat-sub').textContent = [
+    article.readingMinutes ? `${article.readingMinutes} min read` : null,
+    article.language ? languageName(article.language) : null
+  ].filter(Boolean).join(' · ');
+
+  // Editorial title with automatic italic accent on the last standout phrase.
+  $('#article-title').innerHTML = formatEditorialTitle(article.title || article.url);
   $('#article-source').textContent = article.source || '';
-  $('#article-title').textContent = article.title || article.url;
   $('#article-reading-time').textContent = article.readingMinutes ? article.readingMinutes + ' min read' : '';
   $('#article-lang').textContent = article.language ? article.language.toUpperCase() : '';
   $('#article-text').textContent = article.article || '';
+
+  renderUpnext(article);
+}
+
+// Auto-italicize a short stand-out phrase in the title (quoted text, or the
+// final clause after an em-dash/colon). Falls back to plain text if no clear
+// candidate — the effect is meant to feel editorial, not forced.
+function formatEditorialTitle(title) {
+  const esc = escapeHtml(title);
+  const quoted = esc.match(/^(.*?)(&#39;[^&]+?&#39;|&quot;[^&]+?&quot;|‘[^’]+’|“[^”]+”)(.*)$/);
+  if (quoted) {
+    return `${quoted[1]}<em>${quoted[2]}</em>${quoted[3]}`;
+  }
+  const dashed = esc.match(/^(.{20,}?)\s*[—–:]\s+(.+)$/);
+  if (dashed && dashed[2].length < 60) {
+    return `${dashed[1]} — <em>${dashed[2]}</em>`;
+  }
+  return esc;
+}
+
+function languageName(code) {
+  const map = { en: 'English', pt: 'Portuguese', es: 'Spanish', fr: 'French', it: 'Italian', de: 'German' };
+  return map[code.slice(0, 2).toLowerCase()] || code.toUpperCase();
+}
+
+function renderUpnext(currentArticle) {
+  const slot = $('#upnext-slot');
+  let next = null;
+  if (state.playScope) {
+    next = nextInScope(currentArticle.id);
+  } else {
+    const idx = state.queue.findIndex((a) => a.id === currentArticle.id);
+    next = idx >= 0 ? state.queue[idx + 1] : null;
+  }
+  if (!next) { slot.hidden = true; return; }
+  slot.hidden = false;
+  const nextCat = next.category || 'Other';
+  slot.style.setProperty('--cat-color', colorForCategory(nextCat));
+  $('#upnext-cat').textContent = nextCat;
+  $('#upnext-title').textContent = next.title || next.url;
 }
 
 // ------------------------------------------------------------
@@ -1088,7 +1385,7 @@ function updateImportPreview() {
   }
   const tags = [...cats.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([c, n]) => `<span class="tag">${escapeHtml(c)} · ${n}</span>`)
+    .map(([c, n]) => `<span class="tag" style="--tag-color: ${colorForCategory(c)}">${escapeHtml(c)} · ${n}</span>`)
     .join('');
 
   box.hidden = false;
@@ -1184,6 +1481,28 @@ function wire() {
 
   // Bulk playback
   $('#btn-play-all').addEventListener('click', playAll);
+
+  // Onboarding cards
+  document.querySelectorAll('.onboarding-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const action = card.dataset.action;
+      if (action === 'focus-url') $('#url-input').focus();
+      else if (action === 'open-import') showView('import');
+      else if (action === 'share-help') {
+        toast('Open any article in Chrome → Share → Read It To Me');
+      }
+    });
+  });
+
+  // See all in Queue view
+  $('#btn-see-all').addEventListener('click', () => showView('queue'));
+
+  // Text pullout toggle on the player
+  $('#btn-toggle-text').addEventListener('click', () => {
+    const el = $('#article-body-pullout');
+    el.open = !el.open;
+    if (el.open) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 
   $('#btn-playpause').addEventListener('click', togglePlayPause);
   $('#btn-stop').addEventListener('click', stopPlayback);
