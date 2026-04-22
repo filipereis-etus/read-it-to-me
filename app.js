@@ -5,6 +5,7 @@
 const STORAGE_KEYS = {
   speed: 'ritm.speed',
   queue: 'ritm.queue',
+  queueBackup: 'ritm.queue.backup',
   lastId: 'ritm.lastId'
 };
 
@@ -265,24 +266,102 @@ function saveSettings() {
 }
 
 function loadQueue() {
+  let raw = localStorage.getItem(STORAGE_KEYS.queue);
+  let source = 'primary';
+  // If the primary key is missing or empty, fall through to the backup shadow
+  // written on every save. Protects against a corrupted or truncated primary
+  // write; does not protect against full origin-level storage eviction.
+  if (!raw || raw === '[]' || raw === 'null') {
+    const backup = localStorage.getItem(STORAGE_KEYS.queueBackup);
+    if (backup && backup !== '[]' && backup !== 'null') {
+      raw = backup;
+      source = 'backup';
+      console.warn('[ritm] primary queue empty — restoring from backup');
+    }
+  }
+  if (!raw) return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.queue);
-    if (!raw) return;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return;
     state.queue = parsed;
-    // Migrate legacy long category names → current short names; backfill
-    // categories for items saved before the classifier existed.
     for (const a of state.queue) {
       if (a.category && CATEGORY_ALIASES[a.category]) a.category = CATEGORY_ALIASES[a.category];
       if (!a.category) a.category = categorize(a);
     }
-  } catch (e) {}
+    if (source === 'backup' && parsed.length > 0) {
+      saveQueue();
+      setTimeout(() => toast(`Queue restored from backup (${parsed.length} articles)`), 600);
+    }
+  } catch (e) {
+    console.warn('[ritm] queue parse failed:', e);
+  }
 }
 
 function saveQueue() {
-  localStorage.setItem(STORAGE_KEYS.queue, JSON.stringify(state.queue));
+  const json = JSON.stringify(state.queue);
+  localStorage.setItem(STORAGE_KEYS.queue, json);
+  // Shadow copy — written every time. Only rescues us if the primary key is
+  // cleared or corrupted; a full origin wipe takes both.
+  try { localStorage.setItem(STORAGE_KEYS.queueBackup, json); } catch (e) {}
   updateQueueBadge();
+}
+
+function exportQueueAsFile() {
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    count: state.queue.length,
+    currentId: state.currentId || null,
+    queue: state.queue
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ritm-queue-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`Exported ${state.queue.length} articles`);
+}
+
+async function importQueueFromBackup(file) {
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const incoming = Array.isArray(data) ? data : data.queue;
+    if (!Array.isArray(incoming)) throw new Error('Invalid format — expected an array or { queue: [] }');
+
+    const existing = new Set(state.queue.map((a) => a.url));
+    let added = 0, updated = 0;
+    for (const a of incoming) {
+      if (!a || !a.url) continue;
+      if (existing.has(a.url)) {
+        // If the backup has more progress (higher resumeIndex), adopt it.
+        const curr = state.queue.find((x) => x.url === a.url);
+        if (a.resumeIndex > (curr.resumeIndex || 0)) {
+          curr.resumeIndex = a.resumeIndex;
+          curr.totalChunks = a.totalChunks || curr.totalChunks;
+          updated++;
+        }
+        continue;
+      }
+      if (!a.id) a.id = uid();
+      if (a.category && CATEGORY_ALIASES[a.category]) a.category = CATEGORY_ALIASES[a.category];
+      if (!a.category) a.category = categorize(a);
+      state.queue.push(a);
+      added++;
+    }
+    saveQueue();
+    renderQueues();
+    toast(`Imported ${added} new · ${updated} updated`);
+  } catch (err) {
+    console.error(err);
+    toast('Could not read that backup file');
+  }
 }
 
 // ------------------------------------------------------------
@@ -1434,6 +1513,12 @@ function wire() {
     saveQueue();
     renderQueues();
     toast('Queue cleared');
+  });
+
+  $('#btn-export-queue').addEventListener('click', exportQueueAsFile);
+  $('#restore-file').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) importQueueFromBackup(file).then(() => { e.target.value = ''; });
   });
 
   $('#btn-queue').addEventListener('click', () => { renderQueues(); showView('queue'); });

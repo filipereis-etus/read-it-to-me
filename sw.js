@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v9-readers-radio';
+const CACHE_VERSION = 'ritm-v10-backup';
 const CORE_ASSETS = [
   './',
   './index.html',

@@ -59,6 +59,16 @@
             <button class="btn ghost" id="btn-close-settings">Close</button>
           </div>
           <hr />
+          <div class="field">
+            <span>Backup</span>
+            <p class="muted" style="font-size: 12px; margin: 0 0 8px;">Export your queue (URLs, categories, resume positions) as a JSON file you can store anywhere. Restore it later if anything goes wrong.</p>
+          </div>
+          <button class="btn ghost full" id="btn-export-queue">Export queue as file</button>
+          <label class="field" style="margin-top: 10px;">
+            <span>Restore queue from a backup file</span>
+            <input type="file" id="restore-file" accept=".json" />
+          </label>
+          <hr />
           <button class="btn danger full" id="btn-clear-queue">Clear queue</button>
           <p class="muted" style="margin-top: 24px; font-size: 12px;">Article extraction is powered by Mozilla Readability (the same engine as Firefox Reader View), running entirely on your device. No accounts, no API keys, no costs.</p>
         </div>
