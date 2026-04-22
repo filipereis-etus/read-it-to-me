@@ -276,6 +276,12 @@ h2 {
   border-radius: 16px;
   padding: 6px;
   box-shadow: var(--shadow);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.url-row.dropping {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
 .url-row-input {
@@ -894,6 +900,39 @@ hr {
   justify-content: center;
   color: var(--cat-color, var(--ink));
   flex-shrink: 0;
+}
+
+/* Loading state — editorial skeleton while the article fetches. */
+.is-loading .player-title {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.is-loading .player-title em {
+  color: var(--accent);
+}
+
+.loading-pulse {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--cat-color, var(--accent));
+  animation: pulse-dot 1.3s ease-in-out infinite;
+}
+
+.is-loading .progress-fill {
+  animation: sweep 1.6s ease-in-out infinite;
+  width: 30% !important;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(0.7); opacity: 0.5; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes sweep {
+  0% { margin-left: -30%; }
+  100% { margin-left: 100%; }
 }
 
 .player-cat-label {

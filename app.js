@@ -786,20 +786,40 @@ async function openArticle(id, opts = {}) {
   state.currentId = id;
   localStorage.setItem(STORAGE_KEYS.lastId, id);
   showView('player');
-  renderPlayer(article);
 
   if (!article.article) {
-    // processArticle auto-plays on success; scope carries through to onPhaseEnd
+    // Show a styled loading state before we render the "real" player.
+    renderPlayerLoading(article);
     await processArticle(article);
-  } else if (opts.autoPlay) {
-    playArticle(article, { fromStart: true });
-  } else if (article.resumeIndex > 0 && article.totalChunks > 0) {
-    setStatus('paused', 'Paused — tap play to resume');
-    setProgress((article.resumeIndex / article.totalChunks) * 100);
   } else {
-    setStatus('idle', 'Ready');
-    setProgress(0);
+    renderPlayer(article);
+    if (opts.autoPlay) {
+      playArticle(article, { fromStart: true });
+    } else if (article.resumeIndex > 0 && article.totalChunks > 0) {
+      setStatus('paused', 'Paused — tap play to resume');
+      setProgress((article.resumeIndex / article.totalChunks) * 100);
+    } else {
+      setStatus('idle', 'Ready');
+      setProgress(0);
+    }
   }
+}
+
+// Editorial "we're fetching" screen — uses the final player's layout but with
+// an italic Fraunces headline, a skeleton subtitle, and a throbbing accent dot
+// so it reads as intentional rather than "no data yet".
+function renderPlayerLoading(article) {
+  const view = $('#view-player');
+  view.style.setProperty('--cat-color', 'var(--accent)');
+  view.classList.add('is-loading');
+
+  $('#player-cat-mark').innerHTML = '<div class="loading-pulse"></div>';
+  const host = (article.source || hostnameOf(article.url) || '').replace(/^www\./, '');
+  $('#player-cat-label').textContent = host ? `Fetching · ${host}` : 'Fetching article';
+  $('#player-cat-sub').textContent = 'Reader\'s Radio, just a moment…';
+  $('#article-title').innerHTML = 'Pulling the article<br><em>in from the wire</em>…';
+  $('#article-text').textContent = '';
+  $('#upnext-slot').hidden = true;
 }
 
 function articlesInScope() {
@@ -835,6 +855,7 @@ function renderPlayer(article) {
   const color = colorForCategory(cat);
   const view = $('#view-player');
   view.style.setProperty('--cat-color', color);
+  view.classList.remove('is-loading');
 
   $('#player-cat-mark').innerHTML = categoryGlyphSvg(cat, 19);
   const src = article.source ? article.source.replace(/^www\./, '') : '';
@@ -1550,9 +1571,51 @@ function wire() {
     if (url) $('#url-input').value = url;
   });
 
+  // Bulk paste: if someone pastes text containing 2+ URLs into the single-URL
+  // field, route them to the Import view with the content pre-populated.
+  $('#url-input').addEventListener('paste', (e) => {
+    const pasted = ((e.clipboardData || window.clipboardData) || {}).getData ?
+      (e.clipboardData || window.clipboardData).getData('text') : '';
+    if (!pasted) return;
+    const urls = extractUrls(pasted);
+    if (urls.length >= 2) {
+      e.preventDefault();
+      $('#import-text').value = pasted;
+      refreshImportFromTextarea();
+      showView('import');
+      toast(`Found ${urls.length} URLs — review and import`);
+    }
+  });
+
+  // File drop anywhere on the URL row → hand off to the Import view.
+  const urlRow = document.querySelector('.url-row');
+  if (urlRow) {
+    ['dragenter', 'dragover'].forEach((evt) => {
+      urlRow.addEventListener(evt, (e) => {
+        if (!e.dataTransfer || ![...e.dataTransfer.items].some((i) => i.kind === 'file')) return;
+        e.preventDefault();
+        urlRow.classList.add('dropping');
+      });
+    });
+    ['dragleave', 'dragend'].forEach((evt) => {
+      urlRow.addEventListener(evt, () => urlRow.classList.remove('dropping'));
+    });
+    urlRow.addEventListener('drop', (e) => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      e.preventDefault();
+      urlRow.classList.remove('dropping');
+      showView('import');
+      handleImportFile(file);
+      toast('Dropped into Import');
+    });
+  }
+
   // Import view
   $('#btn-open-import').addEventListener('click', () => showView('import'));
   $('#btn-open-import-queue').addEventListener('click', () => showView('import'));
+  const homeImport = document.getElementById('btn-open-import-home');
+  if (homeImport) homeImport.addEventListener('click', () => showView('import'));
   $('#btn-import-back').addEventListener('click', () => showView(state.queue.length ? 'queue' : 'home'));
   $('#import-text').addEventListener('input', refreshImportFromTextarea);
   $('#import-file').addEventListener('change', (e) => handleImportFile(e.target.files[0]));

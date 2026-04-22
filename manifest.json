@@ -1,13 +1,13 @@
 {
   "name": "Read It To Me",
   "short_name": "ReadItToMe",
-  "description": "Share articles to this app and have them read aloud with AI",
+  "description": "An editorial audio app. Share any article, we'll read it aloud.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#f7f5f1",
+  "theme_color": "#f7f5f1",
   "lang": "en",
   "categories": ["news", "productivity", "utilities"],
   "icons": [

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v10-backup';
+const CACHE_VERSION = 'ritm-v11-import-loading';
 const CORE_ASSETS = [
   './',
   './index.html',
