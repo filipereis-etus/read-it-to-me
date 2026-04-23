@@ -76,6 +76,212 @@ function categoryGlyphSvg(name, size = 22) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="currentColor">${inner}</svg>`;
 }
 
+// Unsplash photography per category — used by the Suggested reads carousel.
+// Served straight from Unsplash's CDN so the app stays free and static.
+const CATEGORY_PHOTOS = {
+  Science:  'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=440&q=70&auto=format&fit=crop',
+  Culture:  'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=440&q=70&auto=format&fit=crop',
+  Business: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=440&q=70&auto=format&fit=crop',
+  Tech:     'https://images.unsplash.com/photo-1518770660439-4636190af475?w=440&q=70&auto=format&fit=crop',
+  Health:   'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=440&q=70&auto=format&fit=crop',
+  Politics: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=440&q=70&auto=format&fit=crop',
+  Sports:   'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=440&q=70&auto=format&fit=crop',
+  World:    'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=440&q=70&auto=format&fit=crop',
+  Opinion:  'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=440&q=70&auto=format&fit=crop',
+  Other:    'https://images.unsplash.com/photo-1481487196290-c152efe083f5?w=440&q=70&auto=format&fit=crop'
+};
+
+// ------------------------------------------------------------
+// Sponsored mockups — static placeholders, no ad-network integration.
+// ------------------------------------------------------------
+const MOCK_ADS = {
+  native: [
+    { brand: 'Readwise', tagline: 'Surface your best highlights',
+      body: 'Get one random highlight from your past reading, every morning. 30 days free.',
+      cta: 'Try free', icon: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z M8 7h8M8 11h6' },
+    { brand: 'Matter', tagline: 'Read what you saved, not what\'s trending',
+      body: 'Your read-later queue, without the guilt. Free tier for individual readers.',
+      cta: 'Install', icon: 'M4 4h16v16H4z M4 12h16 M12 4v16' },
+    { brand: 'Instapaper', tagline: 'Distraction-free reading, offline',
+      body: 'Clip any article, sync across devices, pick up where you left off.',
+      cta: 'Get it', icon: 'M6 3h12v18H6z M9 7h6M9 11h6M9 15h3' }
+  ],
+  inline: [
+    { brand: 'Notion', body: 'One workspace. Every team. Try Notion free →',
+      icon: 'M3 11l18-8-8 18-2-8z' },
+    { brand: 'Kagi', body: 'Pay for search, skip the ads. First 100 queries on us.',
+      icon: 'M21 21l-4.35-4.35 M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z' },
+    { brand: 'Fathom', body: 'Privacy-first analytics for readers who care about privacy too.',
+      icon: 'M3 3v18h18 M7 14l4-4 4 4 5-5' }
+  ],
+  banner: [
+    { brand: 'Audible · Featured', headline: 'Your first <em>audiobook</em> free',
+      body: 'Try 30 days of unlimited listening. Cancel anytime, keep your first title.',
+      cta: 'Start free trial' },
+    { brand: 'NYT Audio · Featured', headline: 'Listen to the <em>Daily</em>',
+      body: 'Every weekday morning, a deep dive into the biggest story. Free with your subscription.',
+      cta: 'Listen now' }
+  ]
+};
+
+function pickRandom(arr, seedKey) {
+  if (!arr.length) return null;
+  // Seeded-ish by day so the user sees the same ad within a session rather
+  // than flicker on every re-render.
+  if (seedKey) {
+    const hash = [...seedKey].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0);
+    return arr[Math.abs(hash) % arr.length];
+  }
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function renderSponsoredCard(slot, seed) {
+  if (!slot) return;
+  const ad = pickRandom(MOCK_ADS.native, seed || new Date().toDateString());
+  slot.innerHTML = `
+    <div class="sponsored-card" role="complementary" aria-label="Sponsored">
+      <div class="sponsored-mark">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          ${ad.icon.split(' M').map((seg, i) => `<path d="${i === 0 ? seg : 'M' + seg}"/>`).join('')}
+        </svg>
+      </div>
+      <div class="sponsored-body">
+        <div class="sponsored-brand">${escapeHtml(ad.brand)}</div>
+        <div class="sponsored-tagline">${escapeHtml(ad.tagline)}</div>
+        <div class="sponsored-desc">${escapeHtml(ad.body)}</div>
+        <div class="sponsored-flag">Sponsored · Ad</div>
+      </div>
+      <button class="sponsored-cta" type="button">${escapeHtml(ad.cta)}</button>
+    </div>
+  `;
+}
+
+function renderBannerAd(slot, seed) {
+  if (!slot) return;
+  const ad = pickRandom(MOCK_ADS.banner, seed || new Date().toDateString());
+  slot.innerHTML = `
+    <div class="banner-ad" role="complementary" aria-label="Sponsored banner">
+      <div>
+        <div class="banner-overline">${escapeHtml(ad.brand)}</div>
+        <h3 class="banner-headline">${ad.headline}</h3>
+        <p class="banner-body">${escapeHtml(ad.body)}</p>
+      </div>
+      <div class="banner-foot">
+        <button class="banner-cta" type="button">${escapeHtml(ad.cta)}</button>
+        <div class="banner-flag">Sponsored · Ad</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderQueueAdItem(seed) {
+  const ad = pickRandom(MOCK_ADS.inline, seed);
+  const li = document.createElement('li');
+  li.className = 'queue-item ad';
+  li.innerHTML = `
+    <div class="qi-ad-thumb">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        ${ad.icon.split(' M').map((seg, i) => `<path d="${i === 0 ? seg : 'M' + seg}"/>`).join('')}
+      </svg>
+    </div>
+    <div class="qi-main">
+      <div class="qi-source">${escapeHtml(ad.brand)}</div>
+      <div class="qi-title">${escapeHtml(ad.body)}</div>
+      <div class="qi-ad-flag">Sponsored · Ad</div>
+    </div>
+  `;
+  return li;
+}
+
+// ------------------------------------------------------------
+// Suggested reads carousel — picks 3 articles from the user's queue,
+// preferring different categories and articles that aren't currently playing.
+// ------------------------------------------------------------
+function pickSuggested(n = 3) {
+  const pool = state.queue.filter((a) => a.id !== state.currentId);
+  if (!pool.length) return [];
+  const byCat = new Map();
+  for (const a of pool) {
+    const k = a.category || 'Other';
+    if (!byCat.has(k)) byCat.set(k, []);
+    byCat.get(k).push(a);
+  }
+  const picks = [];
+  const cats = [...byCat.keys()].sort(() => Math.random() - 0.5);
+  for (const c of cats) {
+    if (picks.length >= n) break;
+    const bucket = byCat.get(c);
+    picks.push(bucket[Math.floor(Math.random() * bucket.length)]);
+  }
+  // If one category dominates, pad from whatever is left.
+  while (picks.length < n && pool.length > picks.length) {
+    const remaining = pool.filter((a) => !picks.includes(a));
+    if (!remaining.length) break;
+    picks.push(remaining[Math.floor(Math.random() * remaining.length)]);
+  }
+  return picks;
+}
+
+function renderSuggestedReads(slot) {
+  if (!slot) return;
+  const picks = pickSuggested(3);
+  if (!picks.length) { slot.innerHTML = ''; return; }
+
+  const cards = picks.map((article) => {
+    const cat = article.category || 'Other';
+    const color = colorForCategory(cat);
+    const photo = CATEGORY_PHOTOS[cat] || CATEGORY_PHOTOS['Other'];
+    const source = (article.source || hostnameOf(article.url) || '').replace(/^www\./, '');
+    const summary = article.article
+      ? article.article.split(/\n\n+/)[0].slice(0, 180).trim() + (article.article.length > 180 ? '…' : '')
+      : `From ${source}`;
+    return `
+      <article class="suggested-card" data-id="${escapeHtml(article.id)}" style="--cat-color: ${color}">
+        <div class="suggested-thumb" style="background-image: url('${photo}')">
+          <div class="suggested-thumb-badge">${categoryGlyphSvg(cat, 15)}</div>
+        </div>
+        <div class="suggested-card-body">
+          <div class="suggested-meta">
+            <span class="suggested-cat">${escapeHtml(cat)}</span>
+            <span class="qi-dot">·</span>
+            <span class="suggested-src">${escapeHtml(source)}</span>
+          </div>
+          <div class="suggested-title">${escapeHtml(article.title || article.url)}</div>
+          <div class="suggested-summary">${escapeHtml(summary)}</div>
+          <div class="suggested-foot">
+            <div class="suggested-foot-time">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>${article.readingMinutes ? article.readingMinutes + ' min' : '—'}</span>
+            </div>
+            <button class="suggested-play" aria-label="Play">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  slot.innerHTML = `
+    <div class="suggested-reads">
+      <div class="suggested-header">
+        <div class="overline">Suggested reads</div>
+        <button class="suggested-refresh" type="button">Refresh</button>
+      </div>
+      <div class="suggested-carousel">${cards}</div>
+    </div>
+  `;
+
+  slot.querySelector('.suggested-refresh').addEventListener('click', () => renderSuggestedReads(slot));
+  slot.querySelectorAll('.suggested-card').forEach((card) => {
+    const id = card.dataset.id;
+    card.addEventListener('click', (e) => {
+      const isPlayBtn = e.target.closest('.suggested-play');
+      openArticle(id, { autoPlay: !!isPlayBtn });
+    });
+  });
+}
+
 function categorize(article) {
   const raw = `${article.url || ''} ${article.title || ''} ${article.source || ''}`;
   const hay = ' ' + raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
@@ -534,6 +740,10 @@ function renderFlatList(ul) {
     li.querySelector('[data-action="open-queue"]').addEventListener('click', () => showView('queue'));
     ul.appendChild(li);
   }
+
+  // Sponsored mockups sit below the queue on home.
+  renderSponsoredCard($('#home-ad-slot'), 'home-' + new Date().toDateString());
+  renderBannerAd($('#home-banner-slot'), 'banner-' + new Date().toDateString());
 }
 
 function renderHomeRow(item) {
@@ -724,7 +934,13 @@ function renderGroupedQueue(container) {
     ul.className = 'queue-list';
     const visible = Math.min(state.groupVisible.get(cat) || GROUP_PAGE_SIZE, items.length);
     const innerFrag = document.createDocumentFragment();
-    for (let i = 0; i < visible; i++) innerFrag.appendChild(renderQueueItem(items[i]));
+    for (let i = 0; i < visible; i++) {
+      innerFrag.appendChild(renderQueueItem(items[i]));
+      // Insert a sponsored slot after every 5th real item (not at the end).
+      if ((i + 1) % 5 === 0 && i < visible - 1) {
+        innerFrag.appendChild(renderQueueAdItem(`${cat}-${i}-${new Date().toDateString()}`));
+      }
+    }
     ul.appendChild(innerFrag);
     section.appendChild(ul);
 
@@ -820,6 +1036,9 @@ function renderPlayerLoading(article) {
   $('#article-title').innerHTML = 'Pulling the article<br><em>in from the wire</em>…';
   $('#article-text').textContent = '';
   $('#upnext-slot').hidden = true;
+  // Don't flash stale ads/suggestions while we fetch.
+  const adSlot = $('#player-ad-slot'); if (adSlot) adSlot.innerHTML = '';
+  const sugSlot = $('#player-suggested-slot'); if (sugSlot) sugSlot.innerHTML = '';
 }
 
 function articlesInScope() {
@@ -873,6 +1092,8 @@ function renderPlayer(article) {
   $('#article-text').textContent = article.article || '';
 
   renderUpnext(article);
+  renderSponsoredCard($('#player-ad-slot'), 'player-' + new Date().toDateString());
+  renderSuggestedReads($('#player-suggested-slot'));
 }
 
 // Auto-italicize a short stand-out phrase in the title (quoted text, or the
