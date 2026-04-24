@@ -19,26 +19,65 @@
 </head>
 <body>
   <div id="app">
-    <!-- Top bar -->
+    <!-- Top bar — hamburger menu (with queue count), clickable wordmark (→ home), player shortcut (→ player) -->
     <header class="topbar">
-      <button class="icon-btn" id="btn-queue" aria-label="Queue">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <path d="M3 6h13M3 12h13M3 18h8"/>
-          <path d="M18 10l5 4-5 4z" fill="currentColor" stroke="none"/>
+      <button class="icon-btn" id="btn-menu" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
         </svg>
         <span class="badge" id="queue-badge" hidden>0</span>
       </button>
-      <div class="topbar-wordmark">
+      <button class="topbar-wordmark" id="btn-home-link" aria-label="Reader's Radio — home">
         <div class="topbar-overline">Daily · Issue</div>
         <div class="topbar-title">Reader's <em>Radio</em></div>
-      </div>
-      <button class="icon-btn" id="btn-settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </button>
+      <button class="icon-btn" id="btn-player-shortcut" aria-label="Player">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
         </svg>
       </button>
     </header>
+
+    <!-- Menu drawer (bottom sheet) -->
+    <div id="menu-drawer" class="menu-drawer" hidden>
+      <div class="menu-backdrop" id="menu-backdrop"></div>
+      <div class="menu-sheet" role="dialog" aria-label="Menu">
+        <div class="menu-handle"></div>
+        <div class="menu-header">
+          <div class="overline">Menu</div>
+        </div>
+        <ul class="menu-list">
+          <li>
+            <button class="menu-item" id="btn-menu-queue">
+              <span class="menu-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h13M3 12h13M3 18h8"/><path d="M18 10l5 4-5 4z" fill="currentColor" stroke="none"/></svg>
+              </span>
+              <span class="menu-item-label">Queue</span>
+              <span class="menu-item-count" id="menu-queue-count">0</span>
+              <svg class="menu-item-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </li>
+          <li>
+            <button class="menu-item" id="btn-menu-import">
+              <span class="menu-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              </span>
+              <span class="menu-item-label">Import URL list</span>
+              <svg class="menu-item-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </li>
+          <li>
+            <button class="menu-item" id="btn-menu-settings">
+              <span class="menu-item-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </span>
+              <span class="menu-item-label">Settings</span>
+              <svg class="menu-item-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
 
     <!-- Main views -->
     <main id="views">
@@ -103,9 +142,9 @@
             <button class="add-btn" id="btn-add-url">Add</button>
           </div>
 
-          <!-- Onboarding (shown when queue empty) -->
+          <!-- Onboarding (shown when queue empty). Import moved into the menu. -->
           <div id="empty-queue" class="onboarding-section">
-            <div class="overline">Three ways in</div>
+            <div class="overline">Two ways in</div>
             <button class="onboarding-card" data-action="share-help">
               <span class="onboarding-num">01</span>
               <div class="onboarding-body">
@@ -122,22 +161,13 @@
               </div>
               <svg class="onboarding-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
             </button>
-            <button class="onboarding-card" data-action="open-import">
-              <span class="onboarding-num">03</span>
-              <div class="onboarding-body">
-                <div class="onboarding-title">Import a URL list</div>
-                <div class="onboarding-desc">Drop in a Chrome bookmarks export, a .txt file, or just paste a blob.</div>
-              </div>
-              <svg class="onboarding-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
+            <p class="muted" style="margin-top: 14px; font-size: 12.5px; text-align: center;">
+              Got a long list? Open the <strong style="color: var(--ink);">menu ☰</strong> → <strong style="color: var(--accent);">Import URL list</strong>
+            </p>
           </div>
 
           <!-- Populated home body -->
           <div id="home-populated" hidden>
-            <button class="btn ghost full" id="btn-open-import-home" style="margin-top: 10px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-              Import URL list…
-            </button>
             <div id="resume-slot"></div>
             <div class="up-next-row">
               <div class="overline" id="home-upnext-label">Up next · 0 in queue</div>

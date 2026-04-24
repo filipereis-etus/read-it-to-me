@@ -290,12 +290,30 @@ const MOCK_ADS = {
       icon: 'M3 3v18h18 M7 14l4-4 4 4 5-5' }
   ],
   banner: [
-    { brand: 'Audible · Featured', headline: 'Your first <em>audiobook</em> free',
+    { brand: 'Audible · Featured',
+      headline: 'Your first <em>audiobook</em> free',
       body: 'Try 30 days of unlimited listening. Cancel anytime, keep your first title.',
-      cta: 'Start free trial' },
-    { brand: 'NYT Audio · Featured', headline: 'Listen to the <em>Daily</em>',
-      body: 'Every weekday morning, a deep dive into the biggest story. Free with your subscription.',
-      cta: 'Listen now' }
+      cta: 'Start free trial',
+      bgLight: 'linear-gradient(135deg, #fff9ef 0%, #ffe8d4 100%)',
+      bgDark: 'linear-gradient(135deg, #1e2733 0%, #2a1a14 100%)' },
+    { brand: 'Spotify · Premium',
+      headline: 'Podcasts, <em>uninterrupted</em>',
+      body: '3 months free. No ads, offline downloads, higher quality. Cancel anytime.',
+      cta: 'Get Premium',
+      // Bright Spotify-green gradient — deliberately punchy so you can see how
+      // a colourful advertiser card sits in both themes.
+      bgLight: 'linear-gradient(135deg, #e7fcee 0%, #1db954 110%)',
+      bgDark: 'linear-gradient(135deg, #0a2f1a 0%, #1db954 120%)',
+      accent: '#0e8a58',
+      accentDark: '#3dd197' },
+    { brand: 'Kindle Unlimited · Featured',
+      headline: 'Read <em>anything</em>',
+      body: '30 days of unlimited reading on any device. 2 million titles.',
+      cta: 'Try free',
+      bgLight: 'linear-gradient(135deg, #fff0e4 0%, #ff6b35 110%)',
+      bgDark: 'linear-gradient(135deg, #2a1206 0%, #ff6b35 120%)',
+      accent: '#c84415',
+      accentDark: '#ff8f5e' }
   ]
 };
 
@@ -334,11 +352,21 @@ function renderSponsoredCard(slot, seed) {
 function renderBannerAd(slot, seed) {
   if (!slot) return;
   const ad = pickRandom(MOCK_ADS.banner, seed || new Date().toDateString());
+  // Each banner can override its palette. Inline style so ads with vivid
+  // accent colors contrast against the warm-paper app background.
+  const bg = isDarkMode() ? (ad.bgDark || '') : (ad.bgLight || '');
+  const accent = isDarkMode() ? (ad.accentDark || ad.accent || '') : (ad.accent || '');
+  const styleParts = [];
+  if (bg) styleParts.push(`background: ${bg}`);
+  const style = styleParts.join(';');
+  const overlineStyle = accent ? `style="color: ${accent}"` : '';
+  const headlineEmStyle = accent ? `style="color: ${accent}"` : '';
+
   slot.innerHTML = `
-    <div class="banner-ad" role="complementary" aria-label="Sponsored banner">
+    <div class="banner-ad" role="complementary" aria-label="Sponsored banner" ${style ? `style="${style}"` : ''}>
       <div>
-        <div class="banner-overline">${escapeHtml(ad.brand)}</div>
-        <h3 class="banner-headline">${ad.headline}</h3>
+        <div class="banner-overline" ${overlineStyle}>${escapeHtml(ad.brand)}</div>
+        <h3 class="banner-headline">${ad.headline.replace('<em>', `<em ${headlineEmStyle}>`)}</h3>
         <p class="banner-body">${escapeHtml(ad.body)}</p>
       </div>
       <div class="banner-foot">
@@ -363,6 +391,26 @@ function renderQueueAdItem(seed) {
       <div class="qi-source">${escapeHtml(ad.brand)}</div>
       <div class="qi-title">${escapeHtml(ad.body)}</div>
       <div class="qi-ad-flag">Sponsored · Ad</div>
+    </div>
+  `;
+  return li;
+}
+
+// Home-flavored ad row — same visual vocabulary as HomeQueueRow so it slots in
+// cleanly between the editorial rows.
+function renderHomeAdRow(seed) {
+  const ad = pickRandom(MOCK_ADS.inline, seed);
+  const li = document.createElement('li');
+  li.className = 'home-row ad';
+  li.innerHTML = `
+    <div class="home-row-strip"></div>
+    <div class="home-row-body">
+      <div class="home-row-meta">
+        <span class="home-row-cat" style="color: var(--accent)">${escapeHtml(ad.brand)}</span>
+        <span class="qi-dot">·</span>
+        <span class="home-row-ad-flag">Sponsored</span>
+      </div>
+      <div class="home-row-title">${escapeHtml(ad.body)}</div>
     </div>
   `;
   return li;
@@ -641,10 +689,32 @@ function formatClock(seconds) {
 }
 
 function updateQueueBadge() {
-  const badge = $('#queue-badge');
   const count = state.queue.length;
-  badge.textContent = String(count);
-  badge.hidden = count === 0;
+  const badge = $('#queue-badge');
+  if (badge) {
+    badge.textContent = String(count);
+    badge.hidden = count === 0;
+  }
+  const menuCount = document.getElementById('menu-queue-count');
+  if (menuCount) menuCount.textContent = String(count);
+}
+
+// ------------------------------------------------------------
+// Menu drawer
+// ------------------------------------------------------------
+function openMenu() {
+  const drawer = document.getElementById('menu-drawer');
+  if (!drawer) return;
+  updateQueueBadge();
+  drawer.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMenu() {
+  const drawer = document.getElementById('menu-drawer');
+  if (!drawer) return;
+  drawer.hidden = true;
+  document.body.style.overflow = '';
 }
 
 // ------------------------------------------------------------
@@ -932,7 +1002,13 @@ function renderFlatList(ul) {
   const remaining = current ? state.queue.filter((a) => a.id !== current.id) : state.queue;
   const limit = Math.min(state.homeVisible, remaining.length);
   const frag = document.createDocumentFragment();
-  for (let i = 0; i < limit; i++) frag.appendChild(renderHomeRow(remaining[i]));
+  for (let i = 0; i < limit; i++) {
+    frag.appendChild(renderHomeRow(remaining[i]));
+    // Sponsored slot every 5 real rows (not after the last visible one).
+    if ((i + 1) % 5 === 0 && i < limit - 1) {
+      frag.appendChild(renderHomeAdRow(`home-${i}-${new Date().toDateString()}`));
+    }
+  }
   ul.appendChild(frag);
 
   if (remaining.length > limit) {
@@ -1346,11 +1422,18 @@ function renderUpnext(currentArticle) {
 // ------------------------------------------------------------
 // Fetch & extract via Claude
 // ------------------------------------------------------------
-async function processArticle(article) {
+// Extract an article from the network. When `autoPlay` is true (the default),
+// the player UI shows progress and starts playback automatically. When false
+// we run silently in the background — used to prefetch the next-up article so
+// it's ready the instant the current one finishes.
+async function processArticle(article, { autoPlay = true } = {}) {
+  const foreground = autoPlay === true;
   article.status = 'loading';
-  renderQueues();
-  setStatus('loading', 'Fetching article…');
-  setProgress(10);
+  if (foreground) {
+    renderQueues();
+    setStatus('loading', 'Fetching article…');
+    setProgress(10);
+  }
 
   let html;
   try {
@@ -1358,14 +1441,17 @@ async function processArticle(article) {
   } catch (err) {
     console.error('[ritm] fetch failed:', err);
     article.status = 'error';
-    setStatus('error', 'Could not load page');
-    toast(err.message || 'Could not fetch article');
-    renderQueues();
-    return;
+    if (foreground) {
+      setStatus('error', 'Could not load page');
+      toast(err.message || 'Could not fetch article');
+      renderQueues();
+    } else {
+      saveQueue();
+    }
+    return null;
   }
 
-  setStatus('summarizing', 'Extracting main text…');
-  setProgress(50);
+  if (foreground) { setStatus('summarizing', 'Extracting main text…'); setProgress(50); }
 
   let extracted;
   try {
@@ -1373,18 +1459,22 @@ async function processArticle(article) {
   } catch (err) {
     console.error(err);
     article.status = 'error';
-    setStatus('error', 'Could not parse article');
-    toast('Could not extract article text');
-    renderQueues();
-    return;
+    if (foreground) {
+      setStatus('error', 'Could not parse article');
+      toast('Could not extract article text');
+      renderQueues();
+    }
+    return null;
   }
 
   if (!extracted || !extracted.article || extracted.article.length < 200) {
     article.status = 'error';
-    setStatus('error', 'No article text found');
-    toast('Couldn\'t find readable article content on this page');
-    renderQueues();
-    return;
+    if (foreground) {
+      setStatus('error', 'No article text found');
+      toast('Couldn\'t find readable article content on this page');
+      renderQueues();
+    }
+    return null;
   }
 
   article.title = extracted.title || article.title;
@@ -1395,16 +1485,39 @@ async function processArticle(article) {
   article.totalChunks = splitIntoChunks(article.article).length;
   article.resumeIndex = 0;
   article.status = 'ready';
-  // Re-categorize now that we have a real title — more signal than URL alone.
   article.category = categorize(article);
 
   saveQueue();
-  renderQueues();
-  renderPlayer(article);
-  setStatus('idle', 'Ready to play');
-  setProgress(0);
 
-  playArticle(article);
+  if (foreground) {
+    renderQueues();
+    renderPlayer(article);
+    setStatus('idle', 'Ready to play');
+    setProgress(0);
+    playArticle(article);
+  } else {
+    console.log('[ritm] prefetched:', article.url);
+  }
+  return article;
+}
+
+// Look ahead one article in the current play scope (or the flat queue if no
+// scope) and extract it in the background. Caller-safe — any failure is
+// swallowed so the foreground experience isn't affected.
+function prefetchNext(currentArticle) {
+  if (!currentArticle) return;
+  let next;
+  if (state.playScope) {
+    next = nextInScope(currentArticle.id);
+  } else {
+    const idx = state.queue.findIndex((a) => a.id === currentArticle.id);
+    next = (idx >= 0 && idx < state.queue.length - 1) ? state.queue[idx + 1] : null;
+  }
+  if (!next) return;
+  if (next.article || next.status === 'loading' || next.status === 'error') return;
+  processArticle(next, { autoPlay: false }).catch((err) => {
+    console.warn('[ritm] prefetch failed (silent):', err);
+  });
 }
 
 // Strip boilerplate that Readability tends to keep: author bios at the tail,
@@ -1698,6 +1811,10 @@ function startSpeaking(article) {
   setMediaSession(article);
   requestWakeLock();
   speakNextChunk(article);
+
+  // Warm the next article in the background so auto-advance is instant.
+  // Slight delay so the first chunk's speech has priority on the network.
+  setTimeout(() => prefetchNext(article), 1500);
 }
 
 function moveArticleToTop(id) {
@@ -2006,7 +2123,34 @@ async function commitImport() {
 // Event wiring
 // ------------------------------------------------------------
 function wire() {
-  $('#btn-settings').addEventListener('click', () => showView('settings'));
+  // Defensive listener helper — skips attaching when the element is absent
+  // so a single renamed id can't silently break the rest of wire().
+  const on = (id, evt, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(evt, handler);
+  };
+
+  // Topbar: hamburger (opens menu), wordmark (home), player shortcut (player).
+  document.getElementById('btn-menu')?.addEventListener('click', openMenu);
+  document.getElementById('btn-home-link')?.addEventListener('click', () => {
+    closeMenu();
+    showView('home');
+  });
+  document.getElementById('btn-player-shortcut')?.addEventListener('click', () => {
+    if (state.currentId && findArticle(state.currentId)) {
+      closeMenu();
+      showView('player');
+    } else {
+      toast('Nothing playing yet — add an article to start');
+    }
+  });
+
+  // Menu items + backdrop
+  document.getElementById('menu-backdrop')?.addEventListener('click', closeMenu);
+  document.getElementById('btn-menu-queue')?.addEventListener('click', () => { closeMenu(); showView('queue'); });
+  document.getElementById('btn-menu-import')?.addEventListener('click', () => { closeMenu(); showView('import'); });
+  document.getElementById('btn-menu-settings')?.addEventListener('click', () => { closeMenu(); showView('settings'); });
+
   $('#btn-close-settings').addEventListener('click', () => showView('home'));
   $('#btn-save-settings').addEventListener('click', saveSettings);
   $('#btn-clear-queue').addEventListener('click', () => {
@@ -2025,9 +2169,9 @@ function wire() {
     if (file) importQueueFromBackup(file).then(() => { e.target.value = ''; });
   });
 
-  $('#btn-queue').addEventListener('click', () => { renderQueues(); showView('queue'); });
-  $('#btn-queue-back').addEventListener('click', () => showView(state.currentId ? 'player' : 'home'));
-  $('#btn-back').addEventListener('click', () => showView('home'));
+  // Back buttons (queue and player views)
+  on('btn-queue-back', 'click', () => showView(state.currentId ? 'player' : 'home'));
+  on('btn-back', 'click', () => showView(state.currentId && state.queue.length ? 'queue' : 'home'));
 
   $('#btn-add-url').addEventListener('click', () => {
     const url = $('#url-input').value;
@@ -2094,15 +2238,8 @@ function wire() {
     });
   }
 
-  // Defensive listener helper — skips attaching when the element is absent
-  // so a single renamed id can't silently break the rest of wire().
-  const on = (id, evt, handler) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(evt, handler);
-  };
-
-  // Import view — three entry points (onboarding card #03, populated home, queue view header)
-  on('btn-open-import-home', 'click', () => showView('import'));
+  // Import view — two entry points (menu and queue view header)
+  // (home import button removed — import now lives inside the menu only)
   on('btn-open-import-queue', 'click', () => showView('import'));
   on('btn-import-back', 'click', () => showView(state.queue.length ? 'queue' : 'home'));
   on('import-text', 'input', refreshImportFromTextarea);
