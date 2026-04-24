@@ -2,38 +2,44 @@
   <!-- Warm paper base -->
   <rect width="512" height="512" rx="112" fill="#f7f5f1"/>
 
-  <!-- Hairline editorial frame, subtle -->
-  <rect x="36" y="36" width="440" height="440" rx="84" fill="none" stroke="#14110d" stroke-opacity="0.08" stroke-width="1.5"/>
+  <!-- Editorial hairline frame -->
+  <rect x="40" y="40" width="432" height="432" rx="84" fill="none" stroke="#14110d" stroke-opacity="0.08" stroke-width="1.5"/>
 
-  <!-- Issue overline -->
-  <g transform="translate(256 128)" text-anchor="middle">
-    <text font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="600" fill="#7a7366" letter-spacing="4">DAILY</text>
+  <!-- "DAILY" overline -->
+  <text x="256" y="130" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="22" font-weight="700" fill="#7a7366" letter-spacing="4.5">DAILY</text>
+
+  <!-- Italic serif R — drawn as geometry so it renders identically everywhere -->
+  <g transform="translate(256 280)">
+    <!-- Slight italic shear on the whole R -->
+    <g transform="skewX(-8)">
+      <!-- Left stem -->
+      <path d="M -66 -130 L -66 66" stroke="#14110d" stroke-width="30" stroke-linecap="round"/>
+      <!-- Top cap serif -->
+      <path d="M -86 -130 L -44 -130" stroke="#14110d" stroke-width="14" stroke-linecap="round"/>
+      <!-- Bottom cap serif -->
+      <path d="M -86 66 L -44 66" stroke="#14110d" stroke-width="14" stroke-linecap="round"/>
+      <!-- Bowl of the R -->
+      <path d="M -66 -130 L 26 -130
+               Q 92 -130 92 -60
+               Q 92 8 26 8
+               L -48 8"
+            fill="none" stroke="#14110d" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Leg of the R, swept -->
+      <path d="M 18 8 L 96 66" stroke="#14110d" stroke-width="30" stroke-linecap="round"/>
+      <path d="M 78 66 L 120 66" stroke="#14110d" stroke-width="14" stroke-linecap="round"/>
+    </g>
   </g>
 
-  <!-- Fraunces-like italic R monogram — drawn so it renders identically on any device -->
-  <g transform="translate(256 330)">
-    <!-- Main R shape, composed from hand-drawn paths for a premium serif feel -->
-    <path d="M -85 -145
-             L -85 35
-             M -85 -145
-             L 20 -145
-             Q 85 -145 85 -82
-             Q 85 -22 20 -22
-             L -50 -22
-             M 10 -22
-             L 85 50"
-          stroke="#14110d" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    <!-- Subtle italic lean lines -->
-    <line x1="-102" y1="38" x2="-68" y2="38" stroke="#14110d" stroke-width="6" stroke-linecap="round"/>
-  </g>
-
-  <!-- Vermillion audio wave beneath, nods to "radio" -->
-  <g transform="translate(256 420)" fill="#c1411e">
-    <rect x="-84" y="-7" width="10" height="14" rx="5"/>
-    <rect x="-54" y="-14" width="10" height="28" rx="5"/>
-    <rect x="-24" y="-22" width="10" height="44" rx="5"/>
-    <rect x="6" y="-14" width="10" height="28" rx="5"/>
-    <rect x="36" y="-7" width="10" height="14" rx="5"/>
-    <rect x="66" y="-11" width="10" height="22" rx="5"/>
+  <!-- Vermillion audio wave — five bars + tuning dot -->
+  <g transform="translate(256 416)" fill="#c1411e">
+    <rect x="-104" y="-5" width="11" height="12" rx="5.5"/>
+    <rect x="-72" y="-12" width="11" height="26" rx="5.5"/>
+    <rect x="-40" y="-20" width="11" height="42" rx="5.5"/>
+    <rect x="-8" y="-12" width="11" height="26" rx="5.5"/>
+    <rect x="24" y="-5" width="11" height="12" rx="5.5"/>
+    <rect x="56" y="-10" width="11" height="22" rx="5.5"/>
+    <rect x="88" y="-3" width="11" height="8" rx="5.5"/>
   </g>
 </svg>

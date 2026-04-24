@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#f7f5f1" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="description" content="An editorial audio app. Share articles and have them read aloud." />
-  <title>Read It To Me</title>
+  <meta name="description" content="Reader's Radio — your reading list, spoken. An editorial audio companion." />
+  <title>Reader's Radio</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
@@ -30,7 +30,7 @@
       </button>
       <div class="topbar-wordmark">
         <div class="topbar-overline">Daily · Issue</div>
-        <div class="topbar-title">Read It To Me</div>
+        <div class="topbar-title">Reader's <em>Radio</em></div>
       </div>
       <button class="icon-btn" id="btn-settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -209,8 +209,8 @@
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
               </button>
               <button class="transport-btn main" id="btn-playpause" aria-label="Play/Pause">
-                <svg id="icon-play" viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="icon-pause" viewBox="0 0 24 24" width="34" height="34" fill="currentColor" hidden>
+                <svg id="icon-play" class="pp-icon" viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="pp-icon is-hidden" viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
                   <rect x="6" y="4" width="4.5" height="16" rx="1.5"/>
                   <rect x="13.5" y="4" width="4.5" height="16" rx="1.5"/>
                 </svg>
@@ -321,6 +321,18 @@
     </main>
 
     <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <!-- First-launch welcome splash. Auto-dismisses after ~3s or on tap. -->
+  <div id="splash" class="splash" hidden>
+    <div class="splash-photo" aria-hidden="true"></div>
+    <div class="splash-overlay" aria-hidden="true"></div>
+    <div class="splash-content">
+      <div class="splash-overline">Daily · Issue</div>
+      <h1 class="splash-title">Reader's <em>Radio</em></h1>
+      <p class="splash-tagline">Your reading list, spoken.</p>
+      <div class="splash-hint">tap to begin</div>
+    </div>
   </div>
 
   <script src="Readability.js"></script>

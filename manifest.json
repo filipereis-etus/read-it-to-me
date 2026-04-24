@@ -1,7 +1,7 @@
 {
-  "name": "Read It To Me",
-  "short_name": "ReadItToMe",
-  "description": "An editorial audio app. Share any article, we'll read it aloud.",
+  "name": "Reader's Radio",
+  "short_name": "Reader's Radio",
+  "description": "Your reading list, spoken. An editorial audio companion.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

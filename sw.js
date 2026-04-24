@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v13-pwa-fixes';
+const CACHE_VERSION = 'ritm-v14-readers-radio';
 const CORE_ASSETS = [
   './',
   './index.html',

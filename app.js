@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
   speed: 'ritm.speed',
   queue: 'ritm.queue',
   queueBackup: 'ritm.queue.backup',
-  lastId: 'ritm.lastId'
+  lastId: 'ritm.lastId',
+  splashDate: 'ritm.splashDate'
 };
 
 // CORS proxies — tried in order. If one fails or returns an empty page we
@@ -1827,8 +1828,13 @@ function stopPlayback() {
 }
 
 function setPlayIcon(isPlaying) {
-  $('#icon-play').hidden = isPlaying;
-  $('#icon-pause').hidden = !isPlaying;
+  const play = $('#icon-play');
+  const pause = $('#icon-pause');
+  if (!play || !pause) return;
+  // Class toggle is more reliable than the `hidden` attribute on SVG elements
+  // (which some Chrome Android versions render inconsistently).
+  play.classList.toggle('is-hidden', isPlaying);
+  pause.classList.toggle('is-hidden', !isPlaying);
 }
 
 function highlightSpeed(s) {
@@ -2176,6 +2182,32 @@ function wire() {
 // ------------------------------------------------------------
 // Share target handler
 // ------------------------------------------------------------
+// Show the welcome splash once per calendar day. Skipped entirely when a URL
+// is being shared into the app so the share-to-queue flow isn't interrupted.
+function maybeShowSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  const hasSharedUrl = /[?&](url|text|title)=/.test(location.search);
+  const today = new Date().toDateString();
+  const lastShown = localStorage.getItem(STORAGE_KEYS.splashDate);
+
+  if (hasSharedUrl || lastShown === today) {
+    splash.remove();
+    return;
+  }
+
+  splash.hidden = false;
+  localStorage.setItem(STORAGE_KEYS.splashDate, today);
+
+  const dismiss = () => {
+    if (splash.classList.contains('dismissing')) return;
+    splash.classList.add('dismissing');
+    setTimeout(() => splash.remove(), 520);
+  };
+  splash.addEventListener('click', dismiss);
+  setTimeout(dismiss, 3200);
+}
+
 function handleShareTarget() {
   const params = new URLSearchParams(location.search);
   const candidates = [params.get('url'), params.get('text'), params.get('title')].filter(Boolean);
@@ -2196,6 +2228,7 @@ function handleShareTarget() {
 // Boot
 // ------------------------------------------------------------
 function boot() {
+  maybeShowSplash();
   wire();
   loadSettings();
   loadQueue();
