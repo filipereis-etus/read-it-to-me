@@ -396,6 +396,47 @@ function renderQueueAdItem(seed) {
   return li;
 }
 
+// Featured editorial row — shown every 10 items to break the column rhythm.
+// Uses the article's own category photo + Fraunces title for a magazine feel.
+function renderHomeFeatureRow(item) {
+  const li = document.createElement('li');
+  li.className = 'home-feature';
+  const cat = item.category || 'Other';
+  const color = colorForCategory(cat);
+  const photo = CATEGORY_PHOTOS[cat] || CATEGORY_PHOTOS['Other'];
+  const source = (item.source || hostnameOf(item.url) || '').replace(/^www\./, '');
+  li.style.setProperty('--cat-color', color);
+  li.innerHTML = `
+    <div class="home-feature-thumb" style="background-image: url('${photo}')">
+      <span class="home-feature-tag">Featured</span>
+      <span class="home-feature-chip">
+        <span class="home-feature-dot"></span>
+        ${escapeHtml(cat)}
+      </span>
+    </div>
+    <div class="home-feature-body">
+      <div class="home-feature-src">${escapeHtml(source)}</div>
+      <h3 class="home-feature-title">${escapeHtml(item.title || item.url)}</h3>
+      <div class="home-feature-foot">
+        <div class="home-feature-time">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span>${item.readingMinutes ? item.readingMinutes + ' min' : '—'}</span>
+          ${item.language ? `<span>·</span><span>${escapeHtml(item.language.slice(0, 2).toUpperCase())}</span>` : ''}
+        </div>
+        <button class="home-feature-play" aria-label="Play">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+  // Tap card → open; tap play → open-and-play.
+  li.addEventListener('click', (e) => {
+    const isPlay = e.target.closest('.home-feature-play');
+    openArticle(item.id, { autoPlay: !!isPlay });
+  });
+  return li;
+}
+
 // Home-flavored ad row — same visual vocabulary as HomeQueueRow so it slots in
 // cleanly between the editorial rows.
 function renderHomeAdRow(seed) {
@@ -1003,9 +1044,13 @@ function renderFlatList(ul) {
   const limit = Math.min(state.homeVisible, remaining.length);
   const frag = document.createDocumentFragment();
   for (let i = 0; i < limit; i++) {
-    frag.appendChild(renderHomeRow(remaining[i]));
-    // Sponsored slot every 5 real rows (not after the last visible one).
-    if ((i + 1) % 5 === 0 && i < limit - 1) {
+    const pos = i + 1;
+    // Every 10th item becomes a featured card (photo + Fraunces title).
+    // Every 5th — excluding the feature slots — gets a sponsored ad after it.
+    const isFeature = pos % 10 === 0;
+    const isAdSlot = pos % 5 === 0 && !isFeature;
+    frag.appendChild(isFeature ? renderHomeFeatureRow(remaining[i]) : renderHomeRow(remaining[i]));
+    if (isAdSlot && i < limit - 1) {
       frag.appendChild(renderHomeAdRow(`home-${i}-${new Date().toDateString()}`));
     }
   }

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v15-menu-prefetch';
+const CACHE_VERSION = 'ritm-v16-feature-cards';
 const CORE_ASSETS = [
   './',
   './index.html',
