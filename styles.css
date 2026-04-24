@@ -1440,6 +1440,32 @@ hr {
   background: var(--tag-color, var(--ink-muted));
 }
 
+.import-progress-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.import-progress-title strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.import-progress-track {
+  height: 6px;
+  background: var(--track);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.import-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
 /* ---------- Sponsored (native) card ------------------------------------- */
 
 .sponsored-card {

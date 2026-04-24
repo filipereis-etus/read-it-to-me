@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v12-ads-suggested';
+const CACHE_VERSION = 'ritm-v13-pwa-fixes';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,10 @@ const CORE_ASSETS = [
   './app.js',
   './Readability.js',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable.png'
 ];
 
 self.addEventListener('install', (event) => {

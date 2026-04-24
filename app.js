@@ -14,17 +14,185 @@ const STORAGE_KEYS = {
 // Keyword-based category classifier. No AI, but covers the common beats in
 // both English and Portuguese. The hay is URL path + title + source, normalised
 // by stripping non-alphanumerics so "tech-news" and "tech news" both match.
+// Added two new categories (Lifestyle, Education) plus much broader keyword
+// coverage so fewer articles fall into "Other".
 const CATEGORIES = [
-  { name: 'Tech', keywords: ['tech', 'technology', 'tecnologia', 'software', 'startup', 'programming', 'programacao', 'coding', 'developer', 'desenvolvedor', 'ai', 'artificial', 'inteligencia', 'ia', 'machine', 'learning', 'ml', 'android', 'iphone', 'gadget', 'apple', 'google', 'chromium', 'chrome', 'microsoft', 'github', 'open source', 'app', 'internet'] },
-  { name: 'Business', keywords: ['business', 'negocios', 'market', 'mercado', 'stock', 'stocks', 'acoes', 'economy', 'economia', 'invest', 'investor', 'investir', 'finance', 'financas', 'financeiro', 'ceo', 'company', 'empresa', 'deal', 'ipo', 'banking', 'banco', 'bank', 'fundos', 'startup funding'] },
-  { name: 'Politics', keywords: ['politics', 'political', 'politica', 'election', 'eleicao', 'eleicoes', 'government', 'governo', 'congress', 'congresso', 'senate', 'senado', 'vote', 'voto', 'president', 'presidente', 'parliament', 'camara', 'deputado', 'supreme court', 'stf'] },
-  { name: 'Sports', keywords: ['sport', 'sports', 'esporte', 'esportes', 'football', 'futebol', 'soccer', 'basketball', 'basquete', 'nba', 'nfl', 'fifa', 'olympic', 'olimpiada', 'tennis', 'racing', 'baseball', 'hockey', 'ufc', 'mma'] },
-  { name: 'Science', keywords: ['science', 'ciencia', 'research', 'pesquisa', 'study', 'estudo', 'discovery', 'descoberta', 'astronomy', 'astronomia', 'biology', 'biologia', 'physics', 'fisica', 'chemistry', 'quimica', 'nasa', 'space', 'espaco'] },
-  { name: 'Health', keywords: ['health', 'saude', 'medic', 'medicine', 'medicina', 'disease', 'doenca', 'doctor', 'medico', 'hospital', 'covid', 'vaccine', 'vacina', 'fitness', 'nutrition', 'nutricao', 'wellness', 'mental'] },
-  { name: 'Culture', keywords: ['culture', 'cultura', 'entertainment', 'entretenimento', 'movie', 'movies', 'filme', 'filmes', 'film', 'music', 'musica', 'book', 'books', 'livro', 'album', 'celebrity', 'celebridade', 'tv', 'show', 'serie', 'series', 'netflix', 'art', 'arte', 'theater', 'teatro', 'games', 'gaming'] },
-  { name: 'World', keywords: ['world', 'mundo', 'international', 'internacional', 'global', 'foreign', 'ukraine', 'ucrania', 'russia', 'russia', 'china', 'europe', 'europa', 'asia', 'africa', 'americas', 'middle east', 'oriente medio'] },
-  { name: 'Opinion', keywords: ['opinion', 'opiniao', 'editorial', 'column', 'coluna', 'colunista', 'essay', 'ensaio', 'analysis', 'analise'] }
+  { name: 'Tech', keywords: [
+    'tech', 'technology', 'tecnologia', 'software', 'hardware', 'startup', 'startups',
+    'programming', 'programacao', 'coding', 'developer', 'developers', 'devs', 'desenvolvedor',
+    'ai', 'artificial intelligence', 'inteligencia artificial', 'ia', 'gpt', 'llm', 'claude', 'openai', 'anthropic',
+    'machine learning', 'ml', 'deep learning',
+    'android', 'ios', 'iphone', 'ipad', 'macbook', 'linux', 'windows',
+    'gadget', 'gadgets', 'device', 'robotic', 'robot',
+    'apple', 'google', 'alphabet', 'meta', 'facebook', 'microsoft', 'amazon', 'nvidia', 'tesla',
+    'chromium', 'chrome', 'firefox', 'safari', 'edge',
+    'github', 'gitlab', 'open source', 'open-source', 'api', 'sdk', 'framework',
+    'app', 'aplicativo', 'internet', 'saas', 'cloud', 'servidor', 'server', 'cybersecurity', 'cyber',
+    'vpn', 'crypto', 'criptomoeda', 'bitcoin', 'ethereum', 'blockchain', 'web3', 'nft',
+    'dev-blog', 'hackernews', 'y combinator', 'ycombinator'
+  ] },
+  { name: 'Business', keywords: [
+    'business', 'negocios', 'negocio', 'market', 'mercado', 'markets',
+    'stock', 'stocks', 'acoes', 'bolsa', 'wall street',
+    'economy', 'economia', 'economic', 'economics',
+    'invest', 'investor', 'investment', 'investir', 'investing', 'investimento',
+    'finance', 'financas', 'financial', 'financeiro', 'financeira',
+    'ceo', 'cfo', 'coo', 'founder', 'executive', 'company', 'companhia', 'empresa', 'empresas',
+    'deal', 'deals', 'm&a', 'merger', 'acquisition', 'aquisicao', 'ipo', 'listing',
+    'banking', 'bank', 'banco', 'bancos', 'fintech', 'pagamento', 'pagamentos', 'payment',
+    'fundos', 'fund', 'hedge', 'private equity', 'venture capital', 'vc',
+    'tax', 'imposto', 'impostos', 'tributo', 'tributaria',
+    'trade', 'comercio', 'exportacao', 'importacao', 'tariff',
+    'inflation', 'inflacao', 'juros', 'interest rates', 'selic', 'fed', 'reserve',
+    'bloomberg', 'reuters', 'forbes', 'ft', 'financial times', 'wsj', 'wall street journal',
+    'infomoney', 'valor', 'neofeed', 'estadao economia', 'exame'
+  ] },
+  { name: 'Politics', keywords: [
+    'politics', 'political', 'politica', 'politicas',
+    'election', 'elections', 'eleicao', 'eleicoes', 'eleitor', 'eleitoral',
+    'government', 'gov', 'governo', 'federal', 'estadual', 'municipal', 'executive branch',
+    'congress', 'congresso', 'senate', 'senado', 'camara', 'house', 'deputado', 'deputados', 'senador',
+    'vote', 'votes', 'votacao', 'voto', 'votos',
+    'president', 'presidencia', 'presidente', 'presidential',
+    'prime minister', 'primeiro ministro', 'parliament', 'parlamento',
+    'supreme court', 'tribunal', 'stf', 'stj', 'ministro',
+    'democracy', 'democracia', 'republic', 'republica',
+    'biden', 'trump', 'lula', 'bolsonaro', 'haddad', 'tarcisio', 'macron', 'xi',
+    'law', 'lei', 'legislation', 'legislacao', 'bill', 'projeto de lei', 'pl', 'pec',
+    'conservative', 'liberal', 'progressive', 'esquerda', 'direita',
+    'policy', 'polica publica', 'regulatory', 'regulation', 'regulacao'
+  ] },
+  { name: 'Sports', keywords: [
+    'sport', 'sports', 'esporte', 'esportes',
+    'football', 'futebol', 'soccer', 'liga', 'league', 'premier', 'laliga', 'brasileirao', 'copa',
+    'basketball', 'basquete', 'nba', 'nfl', 'nhl', 'mlb',
+    'fifa', 'champions', 'libertadores', 'mundial', 'worldcup',
+    'olympic', 'olympics', 'olimpiada', 'olimpiadas', 'jogos olimpicos',
+    'tennis', 'tenis', 'wimbledon', 'roland garros',
+    'f1', 'formula 1', 'formula one', 'gp ', 'grande premio', 'racing', 'motorsport', 'nascar',
+    'baseball', 'hockey', 'cricket', 'rugby', 'volleyball', 'volei',
+    'ufc', 'mma', 'boxing', 'boxe',
+    'golf', 'golfe', 'ciclismo', 'cycling',
+    'messi', 'ronaldo', 'neymar', 'lebron', 'curry',
+    'gamewatch', 'globoesporte', 'espn', 'uol esportes', 'lance'
+  ] },
+  { name: 'Science', keywords: [
+    'science', 'sciences', 'ciencia', 'ciencias', 'scientific', 'cientifico',
+    'research', 'pesquisa', 'study', 'estudo', 'paper', 'peer review',
+    'discovery', 'descoberta', 'breakthrough',
+    'astronomy', 'astronomia', 'astrophysics', 'cosmos', 'universo',
+    'biology', 'biologia', 'evolution', 'evolucao', 'genome', 'genoma', 'dna', 'rna',
+    'physics', 'fisica', 'quantum', 'quantico', 'relativity',
+    'chemistry', 'quimica', 'molecule',
+    'nasa', 'esa', 'jaxa', 'space', 'espaco', 'mars', 'moon', 'lua', 'astronaut',
+    'climate', 'clima', 'environment', 'ambiente', 'sustainability', 'sustentavel', 'carbon',
+    'nature', 'scientific american', 'new scientist', 'cnrs',
+    'math', 'matematica', 'algebra', 'geometry', 'estatistica',
+    'archaeology', 'arqueologia', 'fossil', 'dinosaur', 'dinossauro'
+  ] },
+  { name: 'Health', keywords: [
+    'health', 'saude', 'health news',
+    'medic', 'medicine', 'medicina', 'medical', 'clinical',
+    'disease', 'doenca', 'doencas', 'illness', 'syndrome', 'sindrome',
+    'doctor', 'medico', 'medica', 'hospital', 'clinic', 'clinica',
+    'covid', 'coronavirus', 'pandemic', 'pandemia', 'vaccine', 'vacina', 'vaccination',
+    'fitness', 'workout', 'exercise', 'exercicio', 'exercicios', 'gym', 'academia',
+    'nutrition', 'nutricao', 'dieta', 'diet', 'obesity', 'obesidade',
+    'wellness', 'mental health', 'saude mental', 'psychology', 'psicologia', 'psiquiatria',
+    'therapy', 'terapia', 'stress', 'ansiedade', 'anxiety', 'depression', 'depressao',
+    'crescer', 'viva bem', 'health line', 'webmd', 'mayo clinic',
+    'cancer', 'cardio', 'cardiaco', 'heart', 'coracao', 'neurology', 'neurologia',
+    'pharma', 'medicamento', 'drug', 'drugs'
+  ] },
+  { name: 'Culture', keywords: [
+    'culture', 'cultura', 'cultural',
+    'entertainment', 'entretenimento',
+    'movie', 'movies', 'filme', 'filmes', 'film', 'cinema', 'hollywood', 'oscar', 'cannes',
+    'music', 'musica', 'album', 'song', 'musico', 'artista', 'band', 'banda', 'concert', 'show musical', 'streaming music',
+    'book', 'books', 'livro', 'livros', 'literature', 'literatura', 'novel', 'author',
+    'celebrity', 'celebrities', 'celebridade', 'celebridades',
+    'tv', 'television', 'serie', 'series', 'netflix', 'hbo', 'disney', 'prime video', 'amazon prime',
+    'art', 'arte', 'artist', 'painter', 'pintor', 'exhibition', 'exposicao', 'museum', 'museu',
+    'theater', 'theatre', 'teatro', 'play', 'broadway',
+    'games', 'gaming', 'videogame', 'jogo', 'esports', 'playstation', 'xbox', 'nintendo', 'steam',
+    'pitchfork', 'rolling stone', 'billboard', 'variety', 'deadline', 'ign'
+  ] },
+  { name: 'World', keywords: [
+    'world', 'mundo', 'mundial', 'international', 'internacional', 'global', 'foreign',
+    'ukraine', 'ucrania', 'russia', 'russo', 'china', 'chines', 'taiwan', 'hong kong',
+    'europe', 'europa', 'european union', 'uniao europeia', 'eu', 'nato', 'otan',
+    'asia', 'asian', 'japan', 'japao', 'korea', 'coreia', 'north korea', 'india', 'indonesia',
+    'africa', 'africano', 'nigeria', 'south africa', 'egito', 'kenya',
+    'americas', 'latin america', 'latam', 'mexico', 'argentina', 'chile', 'venezuela', 'colombia',
+    'middle east', 'oriente medio', 'israel', 'gaza', 'palestine', 'iran', 'iraq', 'syria', 'saudi',
+    'war', 'guerra', 'conflict', 'conflito', 'refugee', 'refugiado', 'sanction', 'sancao',
+    'diplomat', 'embassy', 'embaixada', 'un ', 'onu', 'united nations', 'g20', 'g7',
+    'uk', 'britain', 'french', 'german', 'italian', 'spain', 'portugal',
+    'canada', 'australia'
+  ] },
+  { name: 'Opinion', keywords: [
+    'opinion', 'opiniao', 'opinions',
+    'editorial', 'editorials',
+    'column', 'coluna', 'columnist', 'colunista',
+    'essay', 'ensaio', 'essays',
+    'analysis', 'analise', 'commentary', 'comentario',
+    'op-ed', 'oped', 'perspective', 'perspectivas', 'viewpoint',
+    'letter to the editor', 'carta ao editor'
+  ] },
+  { name: 'Lifestyle', keywords: [
+    'lifestyle', 'life', 'vida',
+    'food', 'comida', 'receita', 'recipe', 'culinaria', 'cooking', 'cook', 'chef', 'restaurant', 'restaurante', 'wine', 'vinho', 'beer', 'cerveja', 'cafe', 'coffee', 'bebida',
+    'travel', 'viagem', 'turismo', 'destino', 'destination', 'destinations', 'hotel', 'hotels', 'airbnb', 'airline', 'airlines', 'flight', 'voo', 'vacation', 'ferias',
+    'fashion', 'moda', 'style', 'estilo', 'designer', 'outfit', 'apparel',
+    'home', 'lar', 'casa', 'decor', 'decoracao', 'interior', 'interiors', 'architecture', 'arquitetura', 'garden', 'jardim',
+    'beauty', 'beleza', 'skincare', 'makeup', 'maquiagem', 'cosmetic',
+    'relationship', 'relacionamento', 'dating', 'marriage', 'casamento', 'family life', 'parenting', 'mae', 'pai', 'filho', 'filha',
+    'personal finance', 'financas pessoais', 'money tips', 'budget', 'orcamento',
+    'self-help', 'self help', 'self-improvement', 'desenvolvimento pessoal', 'produtividade', 'productivity', 'habits', 'habitos', 'rotina', 'routine',
+    'conde nast traveler', 'vogue', 'glamour', 'harper', 'gq', 'bon appetit', 'eater'
+  ] },
+  { name: 'Education', keywords: [
+    'education', 'educacao', 'educational',
+    'school', 'escola', 'high school', 'colegio',
+    'university', 'universidade', 'college', 'faculdade', 'campus',
+    'student', 'students', 'estudante', 'estudantes', 'aluno', 'alunos',
+    'teacher', 'professor', 'professores', 'teaching', 'ensino',
+    'learning', 'aprendizagem', 'aprendizado', 'curriculum', 'curriculo',
+    'course', 'curso', 'courses', 'cursos', 'mooc', 'coursera', 'udemy', 'edx', 'khan academy',
+    'career', 'carreira', 'job', 'emprego', 'profissao', 'profession',
+    'phd', 'doutorado', 'master', 'mestrado', 'thesis', 'tese',
+    'tuition', 'mensalidade', 'scholarship', 'bolsa de estudos',
+    'enem', 'vestibular', 'sat', 'gre'
+  ] }
 ];
+
+// Domain overrides — when the hostname is one of these, categorization is
+// decisive regardless of keyword hits. Captures the obvious publications.
+const DOMAIN_CATEGORY = {
+  'techcrunch.com': 'Tech', 'theverge.com': 'Tech', 'wired.com': 'Tech', 'arstechnica.com': 'Tech',
+  'engadget.com': 'Tech', 'gizmodo.com': 'Tech', 'hackernews.com': 'Tech', 'news.ycombinator.com': 'Tech',
+  'theregister.com': 'Tech', 'zdnet.com': 'Tech', 'cnet.com': 'Tech', 'tecmundo.com.br': 'Tech',
+  'olhardigital.com.br': 'Tech', 'canaltech.com.br': 'Tech', 'tecnoblog.net': 'Tech',
+  'bloomberg.com': 'Business', 'ft.com': 'Business', 'wsj.com': 'Business', 'economist.com': 'Business',
+  'forbes.com': 'Business', 'fortune.com': 'Business', 'businessinsider.com': 'Business',
+  'infomoney.com.br': 'Business', 'valor.globo.com': 'Business', 'neofeed.com.br': 'Business',
+  'exame.com': 'Business', 'istoedinheiro.com.br': 'Business', 'seudinheiro.com': 'Business',
+  'espn.com': 'Sports', 'espn.com.br': 'Sports', 'globoesporte.com': 'Sports',
+  'globoesporte.globo.com': 'Sports', 'lance.com.br': 'Sports', 'uol.com.br/esporte': 'Sports',
+  'nature.com': 'Science', 'sciencemag.org': 'Science', 'newscientist.com': 'Science',
+  'scientificamerican.com': 'Science', 'quantamagazine.org': 'Science', 'phys.org': 'Science',
+  'healthline.com': 'Health', 'webmd.com': 'Health', 'mayoclinic.org': 'Health',
+  'crescer.globo.com': 'Health', 'vivabem.uol.com.br': 'Health', 'minhavida.com.br': 'Health',
+  'nytimes.com/section/opinion': 'Opinion', 'folha.uol.com.br/opiniao': 'Opinion',
+  'nytimes.com': 'World', 'theguardian.com': 'World', 'bbc.com': 'World', 'reuters.com': 'World',
+  'aljazeera.com': 'World', 'apnews.com': 'World',
+  'pitchfork.com': 'Culture', 'rollingstone.com': 'Culture', 'variety.com': 'Culture',
+  'deadline.com': 'Culture', 'ign.com': 'Culture', 'polygon.com': 'Culture',
+  'vogue.com': 'Lifestyle', 'gq.com': 'Lifestyle', 'cntraveler.com': 'Lifestyle',
+  'bonappetit.com': 'Lifestyle', 'eater.com': 'Lifestyle', 'dwell.com': 'Lifestyle',
+  'chronicle.com': 'Education', 'insidehighered.com': 'Education',
+  'edutopia.org': 'Education'
+};
 
 // Legacy category names from earlier versions → current canonical names.
 const CATEGORY_ALIASES = {
@@ -45,6 +213,8 @@ const CATEGORY_COLORS = {
   'Culture':   { light: '#8a4bc9', dark: '#c28dff' },
   'World':     { light: '#2866c7', dark: '#6fa5ff' },
   'Opinion':   { light: '#b38a00', dark: '#ffd659' },
+  'Lifestyle': { light: '#b85d2e', dark: '#f09560' },
+  'Education': { light: '#2f8a56', dark: '#6ccf8e' },
   'Other':     { light: '#8a8579', dark: '#9aa0ae' }
 };
 
@@ -68,6 +238,8 @@ const CATEGORY_GLYPHS = {
   Culture:  '<path d="M12 3l2.4 5.7 6.1.5-4.7 4 1.5 6-5.3-3.3-5.3 3.3 1.5-6-4.7-4 6.1-.5z" fill="currentColor"/>',
   World:    '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16" fill="none" stroke="currentColor" stroke-width="1.3"/>',
   Opinion:  '<path d="M5 17V6h10l4 4v7a1 1 0 0 1-1 1h-5l-3 3v-3H6a1 1 0 0 1-1-1z" fill="currentColor"/>',
+  Lifestyle:'<path d="M12 6s-3.5-4-7-1.5C2 7 5 11 12 18c7-7 10-11 7-13.5C15.5 2 12 6 12 6z" fill="currentColor"/>',
+  Education:'<path d="M2 9l10-4 10 4-10 4L2 9z" fill="currentColor"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
   Other:    '<circle cx="12" cy="12" r="3" fill="currentColor"/>'
 };
 
@@ -79,16 +251,18 @@ function categoryGlyphSvg(name, size = 22) {
 // Unsplash photography per category — used by the Suggested reads carousel.
 // Served straight from Unsplash's CDN so the app stays free and static.
 const CATEGORY_PHOTOS = {
-  Science:  'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=440&q=70&auto=format&fit=crop',
-  Culture:  'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=440&q=70&auto=format&fit=crop',
-  Business: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=440&q=70&auto=format&fit=crop',
-  Tech:     'https://images.unsplash.com/photo-1518770660439-4636190af475?w=440&q=70&auto=format&fit=crop',
-  Health:   'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=440&q=70&auto=format&fit=crop',
-  Politics: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=440&q=70&auto=format&fit=crop',
-  Sports:   'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=440&q=70&auto=format&fit=crop',
-  World:    'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=440&q=70&auto=format&fit=crop',
-  Opinion:  'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=440&q=70&auto=format&fit=crop',
-  Other:    'https://images.unsplash.com/photo-1481487196290-c152efe083f5?w=440&q=70&auto=format&fit=crop'
+  Science:   'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=440&q=70&auto=format&fit=crop',
+  Culture:   'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=440&q=70&auto=format&fit=crop',
+  Business:  'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=440&q=70&auto=format&fit=crop',
+  Tech:      'https://images.unsplash.com/photo-1518770660439-4636190af475?w=440&q=70&auto=format&fit=crop',
+  Health:    'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=440&q=70&auto=format&fit=crop',
+  Politics:  'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=440&q=70&auto=format&fit=crop',
+  Sports:    'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=440&q=70&auto=format&fit=crop',
+  World:     'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=440&q=70&auto=format&fit=crop',
+  Opinion:   'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=440&q=70&auto=format&fit=crop',
+  Lifestyle: 'https://images.unsplash.com/photo-1481833761820-0509d3217039?w=440&q=70&auto=format&fit=crop',
+  Education: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=440&q=70&auto=format&fit=crop',
+  Other:     'https://images.unsplash.com/photo-1481487196290-c152efe083f5?w=440&q=70&auto=format&fit=crop'
 };
 
 // ------------------------------------------------------------
@@ -283,14 +457,32 @@ function renderSuggestedReads(slot) {
 }
 
 function categorize(article) {
+  // 1) Domain override — most decisive signal when available.
+  const host = (article.source || hostnameOf(article.url) || '').toLowerCase().replace(/^www\./, '');
+  if (host) {
+    // Try full host + path prefix first, then just host
+    const path = (article.url || '').toLowerCase();
+    for (const key of Object.keys(DOMAIN_CATEGORY)) {
+      if (path.includes(key)) return DOMAIN_CATEGORY[key];
+    }
+    if (DOMAIN_CATEGORY[host]) return DOMAIN_CATEGORY[host];
+  }
+
+  // 2) Keyword scoring across URL path, title, source.
   const raw = `${article.url || ''} ${article.title || ''} ${article.source || ''}`;
   const hay = ' ' + raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
   let best = { name: 'Other', score: 0 };
   for (const cat of CATEGORIES) {
     let score = 0;
     for (const k of cat.keywords) {
-      const needle = k.replace(/[^a-z0-9]+/g, ' ');
-      if (hay.includes(' ' + needle + ' ')) score += 1;
+      const needle = k.replace(/[^a-z0-9]+/g, ' ').trim();
+      if (!needle) continue;
+      // Multi-word needles are substring-matched; single words get word-boundary check.
+      if (needle.includes(' ')) {
+        if (hay.includes(' ' + needle + ' ')) score += 2;
+      } else {
+        if (hay.includes(' ' + needle + ' ')) score += 1;
+      }
     }
     if (score > best.score) best = { name: cat.name, score };
   }
@@ -614,35 +806,51 @@ function addArticle(url) {
   return article;
 }
 
-// Bulk-add many URLs at once (used by the import flow). Dedupes against the
-// existing queue by URL and skips malformed entries silently.
-function addArticlesBulk(urls) {
+// Bulk-add many URLs — chunked and asynchronous so a 700-item import doesn't
+// block the main thread. Yields back to the event loop between chunks so the
+// UI stays responsive and Chrome doesn't declare the tab unresponsive.
+async function addArticlesBulk(urls, onProgress) {
+  const CHUNK = 50;
   const added = [];
-  for (let url of urls) {
-    if (!url) continue;
-    url = url.trim();
-    if (!url) continue;
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    try { new URL(url); } catch { continue; }
-    if (state.queue.find((a) => a.url === url)) continue;
-    const a = {
-      id: uid(),
-      url,
-      title: url,
-      source: hostnameOf(url),
-      language: null,
-      article: null,
-      readingMinutes: null,
-      status: 'pending',
-      resumeIndex: 0,
-      totalChunks: 0,
-      category: null
-    };
-    a.category = categorize(a);
-    state.queue.push(a);
-    added.push(a);
+  const existing = new Set(state.queue.map((a) => a.url));
+
+  for (let i = 0; i < urls.length; i += CHUNK) {
+    const slice = urls.slice(i, i + CHUNK);
+    for (let url of slice) {
+      if (!url) continue;
+      url = url.trim();
+      if (!url) continue;
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      try { new URL(url); } catch { continue; }
+      if (existing.has(url)) continue;
+      const a = {
+        id: uid(),
+        url,
+        title: url,
+        source: hostnameOf(url),
+        language: null,
+        article: null,
+        readingMinutes: null,
+        status: 'pending',
+        resumeIndex: 0,
+        totalChunks: 0,
+        category: null
+      };
+      a.category = categorize(a);
+      state.queue.push(a);
+      existing.add(url);
+      added.push(a);
+    }
+    // Persist and yield every chunk so progress is durable and the UI breathes.
+    saveQueue();
+    if (onProgress) onProgress(Math.min(i + CHUNK, urls.length), urls.length, added.length);
+    // Yield to the event loop — lets Chrome paint and handle input.
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
-  if (added.length) { saveQueue(); renderQueues(); }
+
+  // One render at the end — incremental renders mid-import would thrash the
+  // DOM and make the progress indicator stutter.
+  renderQueues();
   return added;
 }
 
@@ -1653,6 +1861,29 @@ function playNext() {
   if (idx !== -1 && idx < state.queue.length - 1) openArticle(state.queue[idx + 1].id);
 }
 
+// Share the currently-playing article's URL via the Web Share API. Falls back
+// to copying the URL to the clipboard when the browser doesn't support it.
+async function sharePlayingArticle() {
+  const article = findArticle(state.currentId);
+  if (!article) { toast('Nothing playing to share'); return; }
+  const data = {
+    title: article.title || 'Article',
+    text: article.source ? `From ${article.source.replace(/^www\./, '')}` : '',
+    url: article.url
+  };
+  if (navigator.share) {
+    try { await navigator.share(data); }
+    catch (e) { if (e.name !== 'AbortError') console.warn(e); }
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(article.url); toast('Link copied'); }
+    catch { toast('Share not supported on this device'); }
+    return;
+  }
+  toast('Share not supported on this device');
+}
+
 // ------------------------------------------------------------
 // Clipboard
 // ------------------------------------------------------------
@@ -1730,13 +1961,38 @@ async function handleImportFile(file) {
   refreshImportFromTextarea();
 }
 
-function commitImport() {
-  const added = addArticlesBulk(importState.urls);
-  if (!added.length) { toast('Nothing new to import'); return; }
-  toast(`Added ${added.length} article${added.length === 1 ? '' : 's'}`);
+async function commitImport() {
+  const urls = importState.urls.slice();
+  if (!urls.length) return;
+
+  const btn = $('#btn-import-commit');
+  const preview = $('#import-preview');
+  btn.disabled = true;
+  preview.innerHTML = `
+    <div class="import-progress">
+      <div class="import-progress-title">Importing <strong id="imp-done">0</strong> / ${urls.length}</div>
+      <div class="import-progress-track"><div class="import-progress-fill" id="imp-fill" style="width: 0%"></div></div>
+      <div class="muted" style="margin-top: 6px; font-size: 12px;">Processing in batches of 50 so the app stays responsive…</div>
+    </div>
+  `;
+  preview.hidden = false;
+
+  const added = await addArticlesBulk(urls, (done, total, addedCount) => {
+    const pct = Math.round((done / total) * 100);
+    const fill = document.getElementById('imp-fill');
+    const doneEl = document.getElementById('imp-done');
+    if (fill) fill.style.width = pct + '%';
+    if (doneEl) doneEl.textContent = String(done);
+  });
+
+  toast(added.length
+    ? `Added ${added.length} article${added.length === 1 ? '' : 's'}`
+    : 'Nothing new — all URLs already in queue');
   $('#import-text').value = '';
+  $('#import-file').value = '';
   importState.urls = [];
   updateImportPreview();
+  btn.disabled = false;
   showView('queue');
 }
 
@@ -1832,16 +2088,21 @@ function wire() {
     });
   }
 
-  // Import view
-  $('#btn-open-import').addEventListener('click', () => showView('import'));
-  $('#btn-open-import-queue').addEventListener('click', () => showView('import'));
-  const homeImport = document.getElementById('btn-open-import-home');
-  if (homeImport) homeImport.addEventListener('click', () => showView('import'));
-  $('#btn-import-back').addEventListener('click', () => showView(state.queue.length ? 'queue' : 'home'));
-  $('#import-text').addEventListener('input', refreshImportFromTextarea);
-  $('#import-file').addEventListener('change', (e) => handleImportFile(e.target.files[0]));
-  $('#btn-import-commit').addEventListener('click', commitImport);
-  $('#btn-import-clear').addEventListener('click', () => {
+  // Defensive listener helper — skips attaching when the element is absent
+  // so a single renamed id can't silently break the rest of wire().
+  const on = (id, evt, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(evt, handler);
+  };
+
+  // Import view — three entry points (onboarding card #03, populated home, queue view header)
+  on('btn-open-import-home', 'click', () => showView('import'));
+  on('btn-open-import-queue', 'click', () => showView('import'));
+  on('btn-import-back', 'click', () => showView(state.queue.length ? 'queue' : 'home'));
+  on('import-text', 'input', refreshImportFromTextarea);
+  on('import-file', 'change', (e) => handleImportFile(e.target.files[0]));
+  on('btn-import-commit', 'click', commitImport);
+  on('btn-import-clear', 'click', () => {
     $('#import-text').value = '';
     $('#import-file').value = '';
     importState.urls = [];
@@ -1849,9 +2110,9 @@ function wire() {
   });
 
   // Bulk playback
-  $('#btn-play-all').addEventListener('click', playAll);
+  on('btn-play-all', 'click', playAll);
 
-  // Onboarding cards
+  // Onboarding cards (empty-home only)
   document.querySelectorAll('.onboarding-card').forEach((card) => {
     card.addEventListener('click', () => {
       const action = card.dataset.action;
@@ -1863,21 +2124,21 @@ function wire() {
     });
   });
 
-  // See all in Queue view
-  $('#btn-see-all').addEventListener('click', () => showView('queue'));
+  on('btn-see-all', 'click', () => showView('queue'));
 
-  // Text pullout toggle on the player
-  $('#btn-toggle-text').addEventListener('click', () => {
+  on('btn-toggle-text', 'click', () => {
     const el = $('#article-body-pullout');
     el.open = !el.open;
     if (el.open) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
-  $('#btn-playpause').addEventListener('click', togglePlayPause);
-  $('#btn-stop').addEventListener('click', stopPlayback);
-  $('#btn-prev').addEventListener('click', playPrev);
-  $('#btn-next').addEventListener('click', playNext);
-  $('#btn-replay-article').addEventListener('click', () => {
+  // Player transport — single play/pause button toggles icons internally.
+  on('btn-playpause', 'click', togglePlayPause);
+  on('btn-stop', 'click', stopPlayback);
+  on('btn-prev', 'click', playPrev);
+  on('btn-next', 'click', playNext);
+  on('btn-share', 'click', sharePlayingArticle);
+  on('btn-replay-article', 'click', () => {
     const a = findArticle(state.currentId);
     if (a && a.article) {
       stopPlayback();
