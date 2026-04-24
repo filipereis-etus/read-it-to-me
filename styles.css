@@ -1945,6 +1945,13 @@ hr {
   justify-content: center;
 }
 
+/* The `display: flex` above outranks the UA's `[hidden] { display: none }`,
+ * so we restore the hide behaviour explicitly. Without this, JS setting
+ * drawer.hidden = true was a no-op visually — the sheet stayed glued open. */
+.menu-drawer[hidden] {
+  display: none !important;
+}
+
 .menu-backdrop {
   position: absolute;
   inset: 0;
@@ -2227,6 +2234,10 @@ hr {
   background: #0b0d12;
   overflow: hidden;
   animation: splash-in 0.4s ease;
+}
+
+.splash[hidden] {
+  display: none !important;
 }
 
 .splash.dismissing {

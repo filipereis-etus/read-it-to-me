@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v16-feature-cards';
+const CACHE_VERSION = 'ritm-v17-menu-hidden-fix';
 const CORE_ASSETS = [
   './',
   './index.html',
