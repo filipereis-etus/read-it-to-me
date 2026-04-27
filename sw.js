@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ritm-v17-menu-hidden-fix';
+const CACHE_VERSION = 'ritm-v18-tts-diagnostics';
 const CORE_ASSETS = [
   './',
   './index.html',

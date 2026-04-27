@@ -1842,11 +1842,27 @@ function setMediaSession(article) {
 }
 
 function startSpeaking(article) {
-  if (!('speechSynthesis' in window)) {
-    toast('Text-to-speech not supported on this device');
+  const synth = window.speechSynthesis;
+  if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
+    // Browsers like Brave (with shields up), some webview-based "secure"
+    // browsers, and most in-app browsers strip the speechSynthesis API.
+    // Tell the user what to do instead of the generic "not supported".
+    toast('No text-to-speech in this browser. Open in Chrome on Android.');
+    console.error('[ritm] TTS API missing.', {
+      hasSpeechSynthesis: 'speechSynthesis' in window,
+      hasUtterance: typeof SpeechSynthesisUtterance !== 'undefined',
+      userAgent: navigator.userAgent,
+      standalone: window.matchMedia('(display-mode: standalone)').matches
+    });
     return;
   }
-  window.speechSynthesis.cancel();
+
+  // Voices may not have loaded yet on first run — synth.speak() falls back to
+  // a default voice in that case. If voices never arrive, the OS likely has
+  // no TTS engine installed at all; surface that as a separate error.
+  refreshVoices();
+
+  synth.cancel();
   moveArticleToTop(article.id);
   state.playing = true;
   state.paused = false;
@@ -1892,9 +1908,22 @@ function speakNextChunk(article) {
   };
   u.onerror = (e) => {
     console.warn('TTS error', e);
-    // Cancellations (e.g. Chrome backgrounding) shouldn't skip a chunk; only
-    // real errors should move past the current one.
-    if (e.error && e.error !== 'canceled' && e.error !== 'interrupted') {
+    if (e.error === 'canceled' || e.error === 'interrupted') {
+      if (state.playing) speakNextChunk(article);
+      return;
+    }
+    // Hard engine failures — usually mean the OS-level TTS engine is missing
+    // or misconfigured. Surface that to the user instead of skipping silently.
+    if (e.error === 'synthesis-failed' || e.error === 'audio-hardware' || e.error === 'audio-busy' || e.error === 'synthesis-unavailable') {
+      state.playing = false;
+      state.paused = false;
+      setPlayIcon(false);
+      releaseWakeLock();
+      setStatus('error', 'TTS engine error');
+      toast('TTS engine error. Open Android Settings → Accessibility → Text-to-speech and pick an engine.');
+      return;
+    }
+    if (e.error) {
       state.chunkIndex += 1;
       persistResume(article);
     }
